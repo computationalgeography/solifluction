@@ -8,6 +8,7 @@ import lue.framework as lfr
 import numpy as np
 
 from input_output import write
+from source.boundary_condition import boundary_set
 
 # from VOF import mass_conservation_2D
 
@@ -23,28 +24,53 @@ def save_generation(array, pathname, iteration):
     )
 """
 
+# rhs = (
+#         g_sin
+#         - ((mu_soil / (gama_soil / 9.81) * du2_dy2))
+#         - ((gama_prime / (gama_soil / 9.81)) * dh_dx)
+#     )
 
-def test_momentum_ux(
-    c,
+# dh_dx = (
+#         h_total - lfr.focal_sum(h_total, kernel_im1_j)
+#     ) / dx  # Note: Upwind method, it is assumed the motion is always from uphill to downhill
+
+#     def momentum_ux(
+#     phi: lfr.PartitionedArray,
+#     phase_state: lfr.PartitionedArray,
+#     dx: float,
+#     dz: float,
+#     dt: float,
+#     lue_u_x: lfr.PartitionedArray,
+#     lue_u_z: lfr.PartitionedArray,
+#     nu_x: float,
+#     nu_z: float,
+#     rhs: lfr.PartitionedArray,
+#     h_mesh: lfr.PartitionedArray,
+#     boundary_loc: lfr.PartitionedArray,
+#     boundary_value: lfr.PartitionedArray,
+#     results_pathname: str,
+# ) -> lfr.PartitionedArray:
+
+
+def momentum_ux(
+    phi,
     phase_state,
-    dx,
-    dz,
-    dt,
+    dx: float,
+    dz: float,
+    dt: float,
     lue_u_x,
     lue_u_z,
-    nu_x,
-    nu_z,
-    g_sin,
-    mu_soil,
-    gama_soil,
-    du2_dy2,
-    gama_prime,
-    h_total,
+    nu_x: float,
+    nu_z: float,
+    rhs,
     h_mesh,
-    results_pathname,
+    boundary_loc,
+    boundary_type,
+    Dirichlet_boundary_value,
+    Neumann_boundary_value,
 ):
 
-    # lue_u_x : c
+    # lue_u_x : phi
     # lue_u_y : 0
     # nu_x : +(mu_mesh/gama_soil_mesh)
     # rhs_g_sin : g*sin(alfa)
@@ -164,34 +190,38 @@ def test_momentum_ux(
         (-(dt / (dz**2)) * nu_z),
     )
 
-    dh_dx = (
-        h_total - lfr.focal_sum(h_total, kernel_im1_j)
-    ) / dx  # Note: Upwind method, it is assumed the motion is always from uphill to downhill
+    # NOTE: coeff_<.> should be implemented on boundaries, for instance on boundary_tpe 1 (left boundary) phi_i-1,j is located outside of domain and we need forward discretization
+    # For now this implementation is ignored as we impose certain boundary conditions on the boundaries which overwrite phi on the boundaries but in the future this should be considered
+    #  and for each boundary use exclusive discretization
 
-    rhs = (
-        g_sin
-        - ((mu_soil / (gama_soil / 9.81) * du2_dy2))
-        - ((gama_prime / (gama_soil / 9.81)) * dh_dx)
-    )
-
-    c_all_domain_i_j = (
-        (coeff_map_i_j * c)  # (coeff_map_i_j * lfr.focal_sum(solution, kernel_i_j))
-        + (coeff_map_im1_j * lfr.focal_sum(c, kernel_im1_j))
-        + (coeff_map_i_jm1 * lfr.focal_sum(c, kernel_i_jm1))
-        + (coeff_map_ip1_j * lfr.focal_sum(c, kernel_ip1_j))
-        + (coeff_map_i_jp1 * lfr.focal_sum(c, kernel_i_jp1))
-        + rhs
+    phi_all_internal_domain_i_j = (
+        (coeff_map_i_j * phi)  # (coeff_map_i_j * lfr.focal_sum(solution, kernel_i_j))
+        + (coeff_map_im1_j * lfr.focal_sum(phi, kernel_im1_j))
+        + (coeff_map_i_jm1 * lfr.focal_sum(phi, kernel_i_jm1))
+        + (coeff_map_ip1_j * lfr.focal_sum(phi, kernel_ip1_j))
+        + (coeff_map_i_jp1 * lfr.focal_sum(phi, kernel_i_jp1))
+        + (dt * rhs)
     )
 
     # phase_state: 0 solid  --> (frozen soil), 1 --> (fluid or unfrozen), now vegetation is ignored in phase_state but it is considered in vegetation_vol_fraction
 
-    c = lfr.where(
+    phi_internal = lfr.where(
         (phase_state != 0) & (h_mesh > 0),  # fluid or unfrozen
-        c_all_domain_i_j,
+        phi_all_internal_domain_i_j,
         0,
     )
 
-    return c
+    phi = boundary_set(
+        phi_internal,
+        boundary_loc,
+        boundary_type,
+        Dirichlet_boundary_value,
+        Neumann_boundary_value,
+        dx,
+        dz,
+    )
+
+    return phi, phi_internal
 
 
 # Eq: dT/dt = thermal_diffusivity_coeff *(d2T/d2x)
@@ -564,7 +594,7 @@ class Layer:
         T,
         h_mesh,
         mu_soil,
-        gama_soil,
+        density_soil,
         phase_state,
         thermal_diffusivity_coeff,
         vegetation_vol_fraction,
@@ -575,7 +605,7 @@ class Layer:
         self.T = T  # Temperature
         self.h_mesh = h_mesh  # soil layer thickness in mesh
         self.mu_soil = mu_soil  # soil viscosity
-        self.gama_soil = gama_soil  #  soil density
+        self.gama_soil = density_soil  #  soil density
         self.phase_state = phase_state  # Phase state (fluid, solid (ice), vegetation)
         self.thermal_diffusivity_coeff = thermal_diffusivity_coeff
         self.vegetation_vol_fraction = vegetation_vol_fraction
@@ -584,7 +614,7 @@ class Layer:
 @lfr.runtime_scope
 def solifluction_simulate(
     dx,
-    dy,
+    dz,
     dt,
     T_surf_file,
     T_initial_file,
@@ -601,7 +631,7 @@ def solifluction_simulate(
     vegetation_vol_fraction_surf_file,
     vegetation_vol_fraction_initial_file,
     nu_x,
-    nu_y,
+    nu_z,
     nr_time_steps,
     partition_shape,
     results_pathname,
@@ -615,7 +645,7 @@ def solifluction_simulate(
     gama_prime = gama_saturate - gama_water
 
     nu_x = 0  # diffusion coefficient in x for momentum equation (fluid motion)
-    nu_x = 0  # diffusion coefficient in y for momentum equation (fluid motion)
+    nu_z = 0  # diffusion coefficient in z for momentum equation (fluid motion)
 
     T_bed = 0
 
@@ -664,8 +694,8 @@ def solifluction_simulate(
         vegetation_vol_fraction_initial_file, partition_shape
     )
 
-    u_y = lfr.array_like(h_total, 0.0)
-    # u_y = lfr.create_array()
+    u_z = lfr.array_like(h_total, 0.0)
+    # u_z = lfr.create_array()
 
     print("---End read_from_gdal_to_lue ------------- ")
 
@@ -677,20 +707,24 @@ def solifluction_simulate(
 
     h_mesh_uniform = h_total / num_layers
 
+    # instantiate Layer objects for all layers
+
     Layer_list = []
 
-    # Assign surface layer properties
+    # NOTE: number of layers is 0 to "num_layers" for bed layer to surface layer
+
+    # Assign bed layer properties
 
     Layer_list.append(
         Layer(
-            U_surf,
-            T_surf,
+            U_initial,
+            T_initial,
             h_mesh_uniform,
-            mu_soil_surf,
-            gama_soil_surf,
-            phase_state_surf,
-            thermal_diffusivity_coeff_surf,
-            vegetation_vol_fraction_surf,
+            mu_soil_initial,
+            density_soil_initial,
+            phase_state_initial,
+            thermal_diffusivity_coeff_initial,
+            vegetation_vol_fraction_initial,
         )
     )
 
@@ -703,27 +737,29 @@ def solifluction_simulate(
                 T_initial,
                 h_mesh_uniform,
                 mu_soil_initial,
-                gama_soil_initial,
+                density_soil_initial,
                 phase_state_initial,
                 thermal_diffusivity_coeff_initial,
                 vegetation_vol_fraction_initial,
             )
         )
 
-    # Assign bed layer properties
+    # Assign surface layer properties
 
     Layer_list.append(
         Layer(
-            U_initial,
-            T_initial,
+            U_surf,
+            T_surf,
             h_mesh_uniform,
-            mu_soil_initial,
-            gama_soil_initial,
-            phase_state_initial,
-            thermal_diffusivity_coeff_initial,
-            vegetation_vol_fraction_initial,
+            mu_soil_surf,
+            density_soil_surf,
+            phase_state_surf,
+            thermal_diffusivity_coeff_surf,
+            vegetation_vol_fraction_surf,
         )
     )
+
+    # End: instantiate Layer objects for all layers
 
     # write(c_equ_lue, results_pathname, "c_equ", 0)
 
@@ -788,16 +824,16 @@ def solifluction_simulate(
 
             # momentum for velocity calculation
 
-            Layer_list[i].U = test_momentum_ux(
+            Layer_list[i].U = momentum_ux(
                 Layer_list[i].U,
                 phase_state,
                 dx,
-                dy,
+                dz,
                 dt,
-                Layer_list[i].U,
-                u_y,
+                Layer_list[i].u_x,
+                u_z,
                 nu_x,
-                nu_y,
+                nu_z,
                 g_sin,
                 Layer_list[i].mu_soil,
                 Layer_list[i].gama_soil,

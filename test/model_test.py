@@ -1,27 +1,40 @@
-import os
-import os.path
 import unittest
 
 import lue.framework as lfr
+import matplotlib.pyplot as plt
 import numpy as np
+from osgeo import gdal
 
-from source.solifluction import mass_conservation_2D, second_derivatives_in_y
+from source.io_data_process import convert_numpy_to_lue, create_zero_numpy_array, write
+from source.solifluction import (
+    Layer,
+    mass_conservation_2D,
+    momentum_ux,
+    second_derivatives_in_y,
+)
+
+# def plot_contour(data_array, title: str):
+#     plt.contour(data_array, levels=10, cmap="viridis")
+#     plt.colorbar()
+#     plt.title(title)
+#     plt.show()
 
 
-def write_lue(lue_array, write_pathname_directory, file_name):
-    if not os.path.exists(write_pathname_directory):
-        os.makedirs(write_pathname_directory)
+def plot_gdal_contours(array):
+    # Open the raster file
+    ds = gdal.Open(array)
 
-    full_pathname_exact = os.path.join(write_pathname_directory, file_name)
-    lfr.to_gdal(lue_array, f"{full_pathname_exact}.tif")
+    # Read the data as an array
+    data = ds.GetRasterBand(1).ReadAsArray()
 
-
-def write(lue_array, write_pathname_directory, file_name, iteration):
-    if not os.path.exists(write_pathname_directory):
-        os.makedirs(write_pathname_directory)
-
-    full_pathname_exact = os.path.join(write_pathname_directory, file_name)
-    lfr.to_gdal(lue_array, "{}-{}.tif".format(full_pathname_exact, iteration))
+    # Plot the contour
+    plt.figure(figsize=(5, 5))
+    contour = plt.contour(data, levels=10, cmap="viridis")
+    plt.colorbar(contour)
+    plt.title("Contour Plot of Raster Data")
+    plt.xlabel("Column Index")
+    plt.ylabel("Row Index")
+    plt.show()
 
 
 class TestPackage(unittest.TestCase):
@@ -143,19 +156,34 @@ class TestPackage(unittest.TestCase):
             "test/h_test.tif", partition_shape=partition_shape
         )
 
+        array_shape = layer_variable_ref.shape
+
+        h_mesh_100 = lfr.create_array(
+            array_shape,
+            dtype=np.float64,
+            fill_value=100,
+            partition_shape=partition_shape,
+        )
+        h_mesh_500 = lfr.create_array(
+            array_shape,
+            dtype=np.float64,
+            fill_value=500,
+            partition_shape=partition_shape,
+        )
+
         # layers order
         # --------------top
         # ------- layer 3
         # ------- layer 2
         # ------- layer 1
-        # -------------bottom
+        # --------------bottom
 
         test_cases = [
             {
                 # ay^2+by+c (a=2, b=5, c=layer_variable_2) ; for y=0 c=center_variable
                 "name": "central_quadratic",
-                "dy_layers_up": 100,
-                "dy_layers_down": 500,
+                "dy_layers_up": h_mesh_100,
+                "dy_layers_down": h_mesh_500,
                 "exact_d2var_dy2": 2 * 2,
                 "layer_variable_2": layer_variable_ref,
                 "layer_variable_3": 2 * (100**2) + 5 * 100 + layer_variable_ref,
@@ -174,8 +202,8 @@ class TestPackage(unittest.TestCase):
             {
                 # ay^2+by+c (a=2, b=5, c=layer_variable_1); for y=0 c=center_variable
                 "name": "forward_quadratic",
-                "dy_layers_up": 100,
-                "dy_layers_down": 500,
+                "dy_layers_up": h_mesh_100,
+                "dy_layers_down": h_mesh_500,
                 "exact_d2var_dy2": 2 * 2,
                 "layer_variable_1": layer_variable_ref,
                 "layer_variable_2": 2 * (500**2) + 5 * 500 + layer_variable_ref,
@@ -222,7 +250,264 @@ class TestPackage(unittest.TestCase):
 
     @lfr.runtime_scope
     def test_momentum_ux(self):
-        pass
+
+        time = 0
+        dt = 1
+        nr_time_steps = 10
+        num_layers = 5
+
+        mu = 10**-2
+        density_soil = 2650
+
+        h_mesh_layer = 20
+
+        num_cols: int = 200  # x direction size for layers' raster
+        num_rows: int = 100  # z direction size for layers' raster
+
+        dx = 1
+        dz = 1
+
+        array_shape = (
+            num_rows,
+            num_cols,
+        )
+        partition_shape = 2 * (20,)
+
+        # Initial condition definition
+        zero_numpy_array = create_zero_numpy_array(num_cols, num_rows, 0, np.uint8)
+        boundary_loc_numpy = zero_numpy_array
+        boundary_loc_numpy[0, :] = 1
+        boundary_loc_numpy[-1, :] = 1
+        boundary_loc_numpy[:, 0] = 1
+        boundary_loc_numpy[:, -1] = 1
+        boundary_type_numpy = zero_numpy_array
+        boundary_type_numpy[:, 0] = 1
+        boundary_type_numpy[0, :] = 4
+        boundary_type_numpy[:, -1] = 3
+        boundary_type_numpy[-1, :] = 2
+
+        boundary_loc = convert_numpy_to_lue(
+            boundary_loc_numpy, partition_shape=partition_shape
+        )
+
+        boundary_type = convert_numpy_to_lue(
+            boundary_type_numpy, partition_shape=partition_shape
+        )
+
+        print(" boundary_loc.shape : ", boundary_loc.shape)
+
+        Dirichlet_boundary_value = zero_numpy_array
+        Neumann_boundary_value = zero_numpy_array
+
+        zero_array_lue = lfr.create_array(
+            array_shape,
+            dtype=np.float64,
+            fill_value=0.0,
+            partition_shape=partition_shape,
+        )
+
+        Dirichlet_boundary_value = zero_array_lue
+        Neumann_boundary_value = zero_array_lue
+
+        # phase_state: 0 solid  --> (frozen soil), 1 --> (fluid or unfrozen), now vegetation is ignored in phase_state but it is considered in vegetation_vol_fraction
+        # In this test phase_state is 1 --> (fluid or unfrozen)
+
+        phase_state_lue = lfr.create_array(
+            array_shape,
+            dtype=np.uint8,
+            fill_value=1,
+            partition_shape=partition_shape,
+        )
+
+        mu_array_lue = lfr.create_array(
+            array_shape,
+            dtype=np.float64,
+            fill_value=mu,
+            partition_shape=partition_shape,
+        )
+
+        density_soil_lue = lfr.create_array(
+            array_shape,
+            dtype=np.float64,
+            fill_value=density_soil,
+            partition_shape=partition_shape,
+        )
+
+        h_mesh = lfr.create_array(
+            array_shape,
+            dtype=np.float64,
+            fill_value=h_mesh_layer,
+            partition_shape=partition_shape,
+        )
+
+        # dh_dx = zero_array_lue
+
+        g_sin = 9.81 * np.sin(np.pi / 6)
+
+        # End: Initial condition definition
+
+        # instantiate Layer objects for all layers
+
+        Layer_list = []
+
+        # NOTE: number of layers is 0 to "num_layers" for bed layer to surface layer
+
+        # Assign bed layer properties
+
+        Layer_list.append(
+            Layer(
+                zero_array_lue,
+                zero_array_lue,
+                None,
+                h_mesh,
+                mu_array_lue,
+                density_soil_lue,
+                phase_state_lue,
+                None,
+                None,
+            )
+        )
+
+        # Assign internal layers properties
+
+        for i in range(1, num_layers):
+            Layer_list.append(
+                Layer(
+                    zero_array_lue,
+                    zero_array_lue,
+                    None,
+                    h_mesh,
+                    mu_array_lue,
+                    density_soil_lue,
+                    phase_state_lue,
+                    None,
+                    None,
+                )
+            )
+
+        # Assign surface layer properties
+
+        Layer_list.append(
+            Layer(
+                zero_array_lue,
+                zero_array_lue,
+                None,
+                h_mesh,
+                mu_array_lue,
+                density_soil_lue,
+                phase_state_lue,
+                None,
+                None,
+            )
+        )
+
+        # End: instantiate Layer objects for all layers
+
+        for time_step in range(1, nr_time_steps + 1):
+
+            time = time + dt
+
+            # velocity at bed layer (layer_id = 0) is zero
+            for layer_id in range(1, num_layers):
+
+                # calculate du2_dy2 for the right hand side of momentum (velocity) equation
+
+                if layer_id == 0:  # bed layer
+
+                    d2u_x_dy2 = second_derivatives_in_y(
+                        Layer_list[1].u_x,
+                        Layer_list[2].u_x,
+                        Layer_list[0].u_x,
+                        h_mesh,
+                        h_mesh,
+                    )
+
+                elif layer_id == num_layers - 1:  # surface layer
+
+                    d2u_x_dy2 = second_derivatives_in_y(
+                        Layer_list[num_layers - 2].u_x,
+                        Layer_list[num_layers - 1].u_x,
+                        Layer_list[num_layers - 3].u_x,
+                        h_mesh,
+                        h_mesh,
+                    )
+
+                else:
+
+                    print("layer_id :", layer_id)
+                    print(
+                        "Layer_list[layer_id].u_x.dtype: ",
+                        Layer_list[layer_id].u_x.dtype,
+                    )
+                    print(
+                        "Layer_list[layer_id + 1].u_x.dtype: ",
+                        Layer_list[layer_id + 1].u_x.dtype,
+                    )
+                    print(
+                        "Layer_list[layer_id - 1].u_x.dtype: ",
+                        Layer_list[layer_id - 1].u_x.dtype,
+                    )
+
+                    d2u_x_dy2 = second_derivatives_in_y(
+                        Layer_list[layer_id].u_x,
+                        Layer_list[layer_id + 1].u_x,
+                        Layer_list[layer_id - 1].u_x,
+                        h_mesh,
+                        h_mesh,
+                    )
+
+                # momentum in x direction for velocity calculation
+
+                rhs = g_sin - ((mu_array_lue / density_soil_lue) * d2u_x_dy2)
+
+                Layer_list[layer_id].u_x, phi_internal = momentum_ux(
+                    Layer_list[layer_id].u_x,
+                    phase_state_lue,
+                    dx,
+                    dz,
+                    dt,
+                    Layer_list[layer_id].u_x,
+                    zero_array_lue,
+                    0.0,
+                    0.0,
+                    rhs,
+                    h_mesh,
+                    boundary_loc,
+                    boundary_type,
+                    Dirichlet_boundary_value,
+                    Neumann_boundary_value,
+                )
+
+                print("layer_id: ", layer_id)
+
+                # print(
+                #     "Layer_list[layer_id].u_x.dtype: ",
+                #     Layer_list[layer_id].u_x.dtype,
+                # )
+
+                # plot_contour(rhs, "rhs")
+
+                # numpy_u_x = lfr.to_numpy(Layer_list[layer_id].u_x)
+                # plot_contour(numpy_u_x, f"layre_{layer_id}")
+
+                write(rhs, "test", "rhs", 0)
+                plot_gdal_contours("rhs-0.tif")
+                input("Press Enter to continue ...")
+
+            write(Layer_list[0].u_x, "test", "u_x_layer", 0)
+            write(Layer_list[1].u_x, "test", "u_x_layer", 1)
+            write(Layer_list[2].u_x, "test", "u_x_layer", 2)
+            write(Layer_list[3].u_x, "test", "u_x_layer", 3)
+            write(Layer_list[4].u_x, "test", "u_x_layer", 4)
+            write(phi_internal, "test", "phi_internal", 4)
+
+            print("time_step: ", time_step)
+
+        # write(Layer_list[0].u_x, "test", "u_x_layer_", 0)
+        # write(Layer_list[1].u_x, "test", "u_x_layer_", 1)
+        # write(Layer_list[2].u_x, "test", "u_x_layer_", 2)
+        # write(Layer_list[3].u_x, "test", "u_x_layer_", 3)
+        # write(Layer_list[4].u_x, "test", "u_x_layer_", 4)
 
 
 if __name__ == "__main__":
