@@ -296,7 +296,7 @@ def mass_conservation_2D(
         ],
         dtype=np.uint8,
     )
-    # kernel_i_jm1   i, j-1
+    # kernel_i_jm1   i, j-1    # check this ???
     kernel_i_jm1 = np.array(
         [
             [0, 1, 0],
@@ -316,7 +316,7 @@ def mass_conservation_2D(
         dtype=np.uint8,
     )
 
-    # kernel_i_jp1   i, j+1
+    # kernel_i_jp1   i, j+1      # check this ???
     kernel_i_jp1 = np.array(
         [
             [0, 0, 0],
@@ -327,6 +327,7 @@ def mass_conservation_2D(
     )
 
     # Upwind first order method
+    # It is assumed that var>=0
 
     flux_x_upstream = lfr.where(
         u_x_mesh >= 0,
@@ -339,10 +340,16 @@ def mass_conservation_2D(
         lfr.focal_sum((u_z_mesh * var), kernel_i_jp1),
     )
 
+    # var_internal = (
+    #     var
+    #     + ((dt / dx) * (flux_x_upstream - (u_x_mesh * var)))
+    #     + ((dt / dz) * (flux_z_upstream - (u_z_mesh * var)))
+    # )
+
     var_internal = (
         var
-        + ((dt / dx) * (flux_x_upstream - (u_x_mesh * var)))
-        + ((dt / dz) * (flux_z_upstream - (u_z_mesh * var)))
+        + ((dt / dx) * (lfr.abs(flux_x_upstream) - (lfr.abs(u_x_mesh) * var)))
+        + ((dt / dz) * (lfr.abs(flux_z_upstream) - (lfr.abs(u_z_mesh) * var)))
     )
 
     """ # Averaged flux or central method

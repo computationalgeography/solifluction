@@ -1,10 +1,11 @@
 import unittest
 
 import lue.framework as lfr
-import matplotlib.pyplot as plt
-import numpy as np
-from osgeo import gdal
 
+# import matplotlib.pyplot as plt
+import numpy as np
+
+from source.boundary_condition import boundary_set
 from source.io_data_process import convert_numpy_to_lue, create_zero_numpy_array, write
 from source.solifluction import (
     Layer,
@@ -13,6 +14,9 @@ from source.solifluction import (
     second_derivatives_in_y,
 )
 
+# from osgeo import gdal
+
+
 # def plot_contour(data_array, title: str):
 #     plt.contour(data_array, levels=10, cmap="viridis")
 #     plt.colorbar()
@@ -20,25 +24,141 @@ from source.solifluction import (
 #     plt.show()
 
 
-def plot_gdal_contours(array):
-    # Open the raster file
-    ds = gdal.Open(array)
+# def plot_gdal_contours(array):
+#     # Open the raster file
+#     ds = gdal.Open(array)
 
-    # Read the data as an array
-    data = ds.GetRasterBand(1).ReadAsArray()
+#     # Read the data as an array
+#     data = ds.GetRasterBand(1).ReadAsArray()
 
-    # Plot the contour
-    plt.figure(figsize=(5, 5))
-    contour = plt.contour(data, levels=10, cmap="viridis")
-    plt.colorbar(contour)
-    plt.title("Contour Plot of Raster Data")
-    plt.xlabel("Column Index")
-    plt.ylabel("Row Index")
-    plt.show()
+#     # Plot the contour
+#     plt.figure(figsize=(5, 5))
+#     contour = plt.contour(data, levels=10, cmap="viridis")
+#     plt.colorbar(contour)
+#     plt.title("Contour Plot of Raster Data")
+#     plt.xlabel("Column Index")
+#     plt.ylabel("Row Index")
+#     plt.show()
+
+
+def h_exact_calculate(h, ux, uz, time_iteration, dt, dx, dz, value_boundary):
+
+    # x ---> matrix or raster columns
+    # z ---> matrix or raster rows
+
+    time = time_iteration * dt
+
+    shift_mesh_col = (ux * time) / dx
+    shift_mesh_row = (uz * time) / dz
+
+    h_exact = np.zeros_like(h)
+
+    for row in range(h.shape[0]):
+        for col in range(h.shape[1]):
+            shifted_row = round(row - shift_mesh_row)
+            shifted_col = round(col - shift_mesh_col)
+
+            if 0 <= shifted_row < h.shape[0] and 0 <= shifted_col < h.shape[1]:
+                h_exact[row, col] = h[shifted_row, shifted_col]
+            else:
+                h_exact[row, col] = value_boundary
+
+    return h_exact
+
+
+def boundary_set_with_numpy(
+    phi,
+    boundary_loc,
+    boundary_type,
+    Dirichlet_boundary_value,
+    Neumann_boundary_value,
+    dx,
+    dz,
+):
+    phi_original = phi
+
+    phi = np.where(
+        (boundary_loc & (boundary_type == 0)), Dirichlet_boundary_value, phi_original
+    )
+
+    for num_row in range(0, phi.shape[0]):
+        for num_col in range(0, phi.shape[1]):
+
+            if boundary_loc[num_row, num_col] & (boundary_type[num_row, num_col] == 1):
+
+                phi[num_row, num_col] = phi[num_row, num_col + 1] - (
+                    dx * Neumann_boundary_value[num_row, num_col]
+                )
+
+    for num_row in range(0, phi.shape[0]):
+        for num_col in range(0, phi.shape[1]):
+
+            if boundary_loc[num_row, num_col] & (boundary_type[num_row, num_col] == 2):
+
+                phi[num_row, num_col] = phi[num_row - 1, num_col] - (
+                    dz * Neumann_boundary_value[num_row, num_col]
+                )
+
+    for num_row in range(0, phi.shape[0]):
+        for num_col in range(0, phi.shape[1]):
+
+            if boundary_loc[num_row, num_col] & (boundary_type[num_row, num_col] == 3):
+
+                phi[num_row, num_col] = phi[num_row, num_col - 1] + (
+                    dx * Neumann_boundary_value[num_row, num_col]
+                )
+
+    for num_row in range(0, phi.shape[0]):
+        for num_col in range(0, phi.shape[1]):
+
+            if boundary_loc[num_row, num_col] & (boundary_type[num_row, num_col] == 4):
+
+                # print("num_row, num_col: ", num_row, num_col)
+                # print("num_row + 1, num_col: ", num_row + 1, num_col)
+                # print("boundary_type: \n", boundary_type)
+
+                phi[num_row, num_col] = phi[num_row + 1, num_col] + (
+                    dz * Neumann_boundary_value[num_row, num_col]
+                )
+
+    # for num_row in range(0, phi.shape[0]):
+    #     for num_col in range(0, phi.shape[1]):
+
+    #         if boundary_loc[num_row, num_col] & (boundary_type[num_row, num_col] == 1):
+
+    #             phi[num_row, num_col] = phi[num_row, num_col + 1] - (
+    #                 dx * Neumann_boundary_value[num_row, num_col]
+    #             )
+
+    #         elif boundary_loc[num_row, num_col] & (
+    #             boundary_type[num_row, num_col] == 2
+    #         ):
+
+    #             phi[num_row, num_col] = phi[num_row - 1, num_col] - (
+    #                 dz * Neumann_boundary_value[num_row, num_col]
+    #             )
+
+    #         elif boundary_loc[num_row, num_col] & (
+    #             boundary_type[num_row, num_col] == 3
+    #         ):
+
+    #             phi[num_row, num_col] = phi[num_row, num_col - 1] + (
+    #                 dx * Neumann_boundary_value[num_row, num_col]
+    #             )
+
+    #         elif boundary_loc[num_row, num_col] & (
+    #             boundary_type[num_row, num_col] == 4
+    #         ):
+
+    #             phi[num_row, num_col] = phi[num_row + 1, num_col] + (
+    #                 dz * Neumann_boundary_value[num_row, num_col]
+    #             )
+
+    return phi
 
 
 class TestPackage(unittest.TestCase):
-
+    """
     @lfr.runtime_scope
     def test_mass_conservation_2D_test(self):
 
@@ -88,7 +208,141 @@ class TestPackage(unittest.TestCase):
         error_matrix_numpy = lfr.to_numpy(error_matrix)
         print("max error: ", np.max(error_matrix_numpy))
         error_threshold = 0.05
-        self.assertLess(max(error_matrix_numpy), error_threshold)
+        self.assertLess(np.max(error_matrix_numpy), error_threshold)'
+    """
+
+    @lfr.runtime_scope
+    def test_mass_conservation_2D_test(self):
+
+        num_cols: int = 100  # x direction
+        num_rows: int = 100  # z direction
+
+        dt = 0.1
+        dx = 1
+        dz = 1
+
+        u_x_value = 1
+        u_z_value = 0
+
+        # time_end = 10
+        time_iteration = 500  # int(time_end / dt)
+        plot_it: int = 100
+
+        partition_shape = 2 * (20,)
+
+        # Initial
+
+        h_numpy = create_zero_numpy_array(
+            num_cols,
+            num_rows,
+            0,
+            np.float64,
+        )
+
+        u_x_numpy = create_zero_numpy_array(
+            num_cols,
+            num_rows,
+            0,
+            np.float64,
+        )
+
+        u_z_numpy = create_zero_numpy_array(
+            num_cols,
+            num_rows,
+            0,
+            np.float64,
+        )
+
+        boundary_loc_numpy = create_zero_numpy_array(
+            num_cols,
+            num_rows,
+            0,
+            np.uint8,
+        )
+
+        num_boundary_layer = 1
+
+        boundary_loc_numpy[0:num_boundary_layer, :] = 1
+        boundary_loc_numpy[-num_boundary_layer:, :] = 1
+        boundary_loc_numpy[:, 0:num_boundary_layer] = 1
+        boundary_loc_numpy[:, -num_boundary_layer:] = 1
+
+        h_numpy[:, :] = 5
+
+        h_square = 10
+
+        h_numpy[40:61, 10:31] = h_square
+
+        u_x_numpy[:, :] = u_x_value
+        u_z_numpy[:, :] = u_z_value
+
+        h_lue = convert_numpy_to_lue(h_numpy, partition_shape)
+        u_x_lue = convert_numpy_to_lue(u_x_numpy, partition_shape)
+        u_z_lue = convert_numpy_to_lue(u_z_numpy, partition_shape)
+        boundary_loc_lue = convert_numpy_to_lue(boundary_loc_numpy, partition_shape)
+
+        h_exact_numpy = h_exact_calculate(
+            h_numpy,
+            ux=u_x_value,
+            uz=u_z_value,
+            time_iteration=time_iteration,
+            dt=dt,
+            dx=dx,
+            dz=dz,
+            value_boundary=5,
+        )
+
+        h_exact_lue = convert_numpy_to_lue(h_exact_numpy, partition_shape)
+
+        # End: Initial
+
+        boundary_value = h_lue  # initial h is set to be boundary_value
+
+        for it_time in range(1, time_iteration + 1):
+
+            h_lue, flux_x_upstream, net_flux = mass_conservation_2D(
+                h_lue, u_x_lue, u_z_lue, dt, dx, dz, boundary_loc_lue, boundary_value
+            )
+
+            if it_time % plot_it == 0:
+                write(h_lue, "test", "h_results_test", it_time)
+                write(flux_x_upstream, "test", "flux_x_upstream", it_time)
+                write(net_flux, "test", "net_flux", it_time)
+
+        error_matrix = lfr.abs(h_exact_lue - h_lue)
+        written = lfr.to_gdal(
+            error_matrix, "test/error_matrix_mass_conservation_2D_test.tif"
+        )
+        written.wait()
+
+        # error = lfr.maximum(lfr.abs(h_mesh_exact - h_mesh))
+        # print("error: ", error.future())
+
+        error_matrix_numpy = lfr.to_numpy(error_matrix)
+
+        time = time_iteration * dt
+        shift_mesh_col = round((u_x_value * time) / dx)
+        shift_mesh_row = round((u_z_value * time) / dz)
+        h_lue_result_to_numpy = lfr.to_numpy(h_lue)
+        h_result_center = h_lue_result_to_numpy[
+            50 + shift_mesh_row, 20 + shift_mesh_col
+        ]
+
+        max_relative_error = np.max(error_matrix_numpy) / h_square
+
+        print("max error: ", max_relative_error)
+
+        center_box_error = abs(h_result_center - h_square) / h_square
+
+        print("h_exact_center: ", h_square, "h_result_center: ", h_result_center)
+
+        print("box center error: ", center_box_error)
+
+        error_threshold_max = 0.3
+        error_threshold_center = 0.1
+
+        self.assertLess(max_relative_error, error_threshold_max)
+        self.assertLess(center_box_error, error_threshold_center)
 
     """
     @lfr.runtime_scope
@@ -143,7 +397,6 @@ class TestPackage(unittest.TestCase):
 
         error_threshold = 1
         self.assertLess(np.max(error_matrix_numpy), error_threshold)
-
     """
 
     @lfr.runtime_scope
@@ -274,17 +527,27 @@ class TestPackage(unittest.TestCase):
         partition_shape = 2 * (20,)
 
         # Initial condition definition
-        zero_numpy_array = create_zero_numpy_array(num_cols, num_rows, 0, np.uint8)
-        boundary_loc_numpy = zero_numpy_array
+        # boundary_loc_numpy = create_zero_numpy_array(num_cols, num_rows, 0, np.uint8)
+        # boundary_loc_numpy[1, 1:-1] = 1  # second row
+        # boundary_loc_numpy[-2, 1:-1] = 1  # Second-to-last row
+        # boundary_loc_numpy[1:-1, 1] = 1  # second column
+        # boundary_loc_numpy[1:-1, -2] = 1  # Second-to-last column
+        # boundary_type_numpy = create_zero_numpy_array(num_cols, num_rows, 0, np.uint8)
+        # boundary_type_numpy[1:-1, 1] = 1
+        # boundary_type_numpy[1, 1:-1] = 4
+        # boundary_type_numpy[1:-1, -2] = 3
+        # boundary_type_numpy[-2, 1:-1] = 2
+
+        boundary_loc_numpy = create_zero_numpy_array(num_cols, num_rows, 0, np.uint8)
         boundary_loc_numpy[0, :] = 1
         boundary_loc_numpy[-1, :] = 1
         boundary_loc_numpy[:, 0] = 1
         boundary_loc_numpy[:, -1] = 1
-        boundary_type_numpy = zero_numpy_array
-        boundary_type_numpy[:, 0] = 1
+        boundary_type_numpy = create_zero_numpy_array(num_cols, num_rows, 0, np.uint8)
         boundary_type_numpy[0, :] = 4
-        boundary_type_numpy[:, -1] = 3
         boundary_type_numpy[-1, :] = 2
+        boundary_type_numpy[:, 0] = 1
+        boundary_type_numpy[:, -1] = 3
 
         boundary_loc = convert_numpy_to_lue(
             boundary_loc_numpy, partition_shape=partition_shape
@@ -295,9 +558,6 @@ class TestPackage(unittest.TestCase):
         )
 
         print(" boundary_loc.shape : ", boundary_loc.shape)
-
-        Dirichlet_boundary_value = zero_numpy_array
-        Neumann_boundary_value = zero_numpy_array
 
         zero_array_lue = lfr.create_array(
             array_shape,
@@ -458,7 +718,15 @@ class TestPackage(unittest.TestCase):
 
                 # momentum in x direction for velocity calculation
 
+                d2u_x_dy2_numpy = lfr.to_numpy(d2u_x_dy2)
+
+                print("d2u_x_dy2_numpy: \n", d2u_x_dy2_numpy)
+
                 rhs = g_sin - ((mu_array_lue / density_soil_lue) * d2u_x_dy2)
+
+                rhs_numpy = lfr.to_numpy(rhs)
+
+                print("rhs_numpy: \n", rhs_numpy)
 
                 Layer_list[layer_id].u_x, phi_internal = momentum_ux(
                     Layer_list[layer_id].u_x,
@@ -478,7 +746,13 @@ class TestPackage(unittest.TestCase):
                     Neumann_boundary_value,
                 )
 
-                print("layer_id: ", layer_id)
+                layer_u_x_numpy = lfr.to_numpy(Layer_list[layer_id].u_x)
+                phi_internal_numpy = lfr.to_numpy(phi_internal)
+
+                print("layer_u_x_numpy: \n", layer_u_x_numpy)
+                print("phi_internal_numpy: \n", phi_internal_numpy)
+
+                print("layer_id: \n", layer_id)
 
                 # print(
                 #     "Layer_list[layer_id].u_x.dtype: ",
@@ -491,15 +765,11 @@ class TestPackage(unittest.TestCase):
                 # plot_contour(numpy_u_x, f"layre_{layer_id}")
 
                 write(rhs, "test", "rhs", 0)
-                plot_gdal_contours("rhs-0.tif")
-                input("Press Enter to continue ...")
+                # plot_gdal_contours("rhs-0.tif")
+                write(Layer_list[layer_id].u_x, "test", "u_x_layer", layer_id)
+                write(phi_internal, "test", "phi_internal", layer_id)
 
-            write(Layer_list[0].u_x, "test", "u_x_layer", 0)
-            write(Layer_list[1].u_x, "test", "u_x_layer", 1)
-            write(Layer_list[2].u_x, "test", "u_x_layer", 2)
-            write(Layer_list[3].u_x, "test", "u_x_layer", 3)
-            write(Layer_list[4].u_x, "test", "u_x_layer", 4)
-            write(phi_internal, "test", "phi_internal", 4)
+                input("Press Enter to continue ...")
 
             print("time_step: ", time_step)
 
@@ -508,6 +778,401 @@ class TestPackage(unittest.TestCase):
         # write(Layer_list[2].u_x, "test", "u_x_layer_", 2)
         # write(Layer_list[3].u_x, "test", "u_x_layer_", 3)
         # write(Layer_list[4].u_x, "test", "u_x_layer_", 4)
+
+    @lfr.runtime_scope
+    def test_boundary_set(self):
+
+        num_cols: int = 200  # x direction size for layers' raster
+        num_rows: int = 100  # z direction size for layers' raster
+
+        dx = 1
+        dz = 1
+
+        array_shape = (
+            num_rows,
+            num_cols,
+        )
+        partition_shape = 2 * (20,)
+
+        phi = lfr.uniform(
+            array_shape,
+            dtype=np.float64,
+            min_value=0,
+            max_value=10,
+            partition_shape=partition_shape,
+        )
+
+        # phi = lfr.create_array(
+        #     array_shape,
+        #     dtype=np.float64,
+        #     fill_value=80,
+        #     partition_shape=partition_shape,
+        # )
+
+        phi_numpy = lfr.to_numpy(phi)
+
+        # It is assumed that one row/column of meshes around the x-z domain (raster) consists of virtual meshes,
+        # or meshes where calculations are not intended to be performed.
+        # In these meshes, results are NaN since LUE is not designed to compute values on the first and last rows and columns of the raster.
+        # Therefore, boundary conditions are imposed on a mesh layer extending inside the domain.
+
+        boundary_loc_numpy = create_zero_numpy_array(num_cols, num_rows, 0, np.uint8)
+        boundary_loc_numpy[1, 1:-1] = 1  # second row
+        boundary_loc_numpy[-2, 1:-1] = 1  # Second-to-last row
+        boundary_loc_numpy[1:-1, 1] = 1  # second column
+        boundary_loc_numpy[1:-1, -2] = 1  # Second-to-last column
+        boundary_type_numpy = create_zero_numpy_array(num_cols, num_rows, 0, np.uint8)
+        boundary_type_numpy[1:-1, 1] = 1
+        boundary_type_numpy[1, 1:-1] = 4
+        boundary_type_numpy[1:-1, -2] = 3
+        boundary_type_numpy[-2, 1:-1] = 2
+
+        boundary_loc = convert_numpy_to_lue(
+            boundary_loc_numpy, partition_shape=partition_shape
+        )
+
+        boundary_type = convert_numpy_to_lue(
+            boundary_type_numpy, partition_shape=partition_shape
+        )
+
+        print(" boundary_loc.shape : ", boundary_loc.shape)
+
+        Dirichlet_boundary_value_numpy = create_zero_numpy_array(
+            num_cols, num_rows, 0, np.float64
+        )
+        Neumann_boundary_value_numpy = create_zero_numpy_array(
+            num_cols, num_rows, 0, np.float64
+        )
+
+        # Dirichlet_boundary_value = convert_numpy_to_lue(
+        #     Dirichlet_boundary_value_numpy, partition_shape=partition_shape
+        # )
+
+        # Neumann_boundary_value = convert_numpy_to_lue(
+        #     Neumann_boundary_value_numpy, partition_shape=partition_shape
+        # )
+
+        Dirichlet_boundary_value = lfr.create_array(
+            array_shape,
+            dtype=np.float64,
+            fill_value=0.0,
+            partition_shape=partition_shape,
+        )
+
+        Neumann_boundary_value = lfr.create_array(
+            array_shape,
+            dtype=np.float64,
+            fill_value=0.0,
+            partition_shape=partition_shape,
+        )
+
+        # phi_original = lfr.to_numpy(phi)
+
+        phi = boundary_set(
+            phi,
+            boundary_loc,
+            boundary_type,
+            Dirichlet_boundary_value,
+            Neumann_boundary_value,
+            dx,
+            dz,
+        )
+
+        phi_expect_numpy = boundary_set_with_numpy(
+            phi_numpy,
+            boundary_loc_numpy,
+            boundary_type_numpy,
+            Dirichlet_boundary_value_numpy,
+            Neumann_boundary_value_numpy,
+            dx,
+            dz,
+        )
+
+        phi_lue_to_numpy = lfr.to_numpy(phi)
+
+        # self.assertTrue(
+        #     np.allclose(
+        #         phi_lue_to_numpy,
+        #         phi_expect_numpy,
+        #         atol=10**-8,
+        #     )
+        # )
+
+        # print("phi_original: \n", phi_original)
+        # print("phi_expect_numpy: \n", phi_expect_numpy)
+        # print("phi_lue_to_numpy: \n", phi_lue_to_numpy)
+        # print("boundary_loc_numpy: \n", boundary_loc_numpy)
+        # print("boundary_type_numpy: \n", boundary_type_numpy)
+
+        # ---------------------------------------
+
+        # kernel_ip1_j = np.array(
+        #     [
+        #         [0, 0, 0],
+        #         [0, 0, 1],
+        #         [0, 0, 0],
+        #     ],
+        #     dtype=np.uint8,
+        # )
+
+        # phi_ip1_j = lfr.focal_sum(phi, kernel_ip1_j)
+
+        # phi_ip1_j_numpy = lfr.to_numpy(phi_ip1_j)
+
+        # print("phi_ip1_j_numpy: \n", phi_ip1_j_numpy)
+
+        # # ---------------------------------------
+
+        error_matrix_numpy = np.abs(phi_lue_to_numpy - phi_expect_numpy)
+
+        # print("error_matrix_numpy: \n", error_matrix_numpy)
+
+        error_threshold = 10**-8
+        self.assertLess(np.max(error_matrix_numpy), error_threshold)
+
+    @lfr.runtime_scope
+    def test_boundary_set_2(self):
+
+        num_cols: int = 200  # x direction size for layers' raster
+        num_rows: int = 100  # z direction size for layers' raster
+
+        dx = 1
+        dz = 1
+
+        array_shape = (num_rows, num_cols)
+        partition_shape = 2 * (20,)
+
+        Dirichlet_boundary_value_numpy = create_zero_numpy_array(
+            num_cols, num_rows, 0, np.float64
+        )
+        Neumann_boundary_value_numpy = create_zero_numpy_array(
+            num_cols, num_rows, 0, np.float64
+        )
+
+        Dirichlet_boundary_value = lfr.create_array(
+            array_shape,
+            dtype=np.float64,
+            fill_value=0.0,
+            partition_shape=partition_shape,
+        )
+
+        Neumann_boundary_value = lfr.create_array(
+            array_shape,
+            dtype=np.float64,
+            fill_value=0.0,
+            partition_shape=partition_shape,
+        )
+
+        boundary_loc_numpy_1 = create_zero_numpy_array(num_cols, num_rows, 0, np.uint8)
+        boundary_loc_numpy_1[0, :] = 1
+        boundary_loc_numpy_1[-1, :] = 1
+        boundary_loc_numpy_1[:, 0] = 1
+        boundary_loc_numpy_1[:, -1] = 1
+
+        boundary_type_numpy_1 = create_zero_numpy_array(num_cols, num_rows, 0, np.uint8)
+        boundary_type_numpy_1[0, :] = 4
+        boundary_type_numpy_1[-1, :] = 2
+        boundary_type_numpy_1[:, 0] = 1
+        boundary_type_numpy_1[:, -1] = 3
+
+        boundary_loc_numpy_2 = create_zero_numpy_array(num_cols, num_rows, 0, np.uint8)
+        boundary_loc_numpy_2[1, 1:-1] = 1  # second row
+        boundary_loc_numpy_2[-2, 1:-1] = 1  # Second-to-last row
+        boundary_loc_numpy_2[1:-1, 1] = 1  # second column
+        boundary_loc_numpy_2[1:-1, -2] = 1  # Second-to-last column
+
+        boundary_type_numpy_2 = create_zero_numpy_array(num_cols, num_rows, 0, np.uint8)
+        boundary_type_numpy_2[1, 1:-1] = 4
+        boundary_type_numpy_2[-2, 1:-1] = 2
+        boundary_type_numpy_2[1:-1, 1] = 1
+        boundary_type_numpy_2[1:-1, -2] = 3
+
+        test_cases = [
+            {
+                "name": "all_Neumann_first_mesh_layer",
+                "phi": lfr.uniform(
+                    array_shape,
+                    dtype=np.float64,
+                    min_value=0,
+                    max_value=10,
+                    partition_shape=partition_shape,
+                ),
+                "boundary_loc_numpy": boundary_loc_numpy_1,
+                "boundary_type_numpy": boundary_type_numpy_1,
+            },
+            {
+                "name": "all_Neumann_second_mesh_layer",
+                "phi": lfr.create_array(
+                    array_shape,
+                    dtype=np.float64,
+                    fill_value=80,
+                    partition_shape=partition_shape,
+                ),
+                "boundary_loc_numpy": boundary_loc_numpy_2,
+                "boundary_type_numpy": boundary_type_numpy_2,
+            },
+        ]
+
+        for case in test_cases:
+            with self.subTest(case["name"]):
+                phi = case["phi"]
+
+                boundary_loc_numpy = case["boundary_loc_numpy"]
+                boundary_type_numpy = case["boundary_type_numpy"]
+
+                boundary_loc = convert_numpy_to_lue(
+                    boundary_loc_numpy, partition_shape=partition_shape
+                )
+                boundary_type = convert_numpy_to_lue(
+                    boundary_type_numpy, partition_shape=partition_shape
+                )
+
+                phi_numpy = lfr.to_numpy(phi)
+
+                phi = boundary_set(
+                    phi,
+                    boundary_loc,
+                    boundary_type,
+                    Dirichlet_boundary_value,
+                    Neumann_boundary_value,
+                    dx,
+                    dz,
+                )
+
+                phi_expect_numpy = boundary_set_with_numpy(
+                    phi_numpy,
+                    boundary_loc_numpy,
+                    boundary_type_numpy,
+                    Dirichlet_boundary_value_numpy,
+                    Neumann_boundary_value_numpy,
+                    dx,
+                    dz,
+                )
+
+                phi_lue_to_numpy = lfr.to_numpy(phi)
+
+                error_matrix_numpy = np.abs(phi_lue_to_numpy - phi_expect_numpy)
+                error_threshold = 10**-8
+
+                print("phi_numpy - original phi: \n", phi_numpy)
+                print("phi_lue_to_numpy - original \n", phi_lue_to_numpy)
+                print("error_matrix_numpy: \n", error_matrix_numpy)
+                print("boundary_loc_numpy: \n", boundary_loc_numpy)
+                print("boundary_type_numpy: \n", boundary_type_numpy)
+
+                self.assertLess(np.max(error_matrix_numpy), error_threshold)
+
+    @lfr.runtime_scope
+    def test_kernel_multiply(self):
+
+        num_cols: int = 10
+        num_rows: int = 10
+
+        partition_shape = (5, 5)
+
+        phi_numpy = create_zero_numpy_array(num_cols, num_rows, 0, np.float64)
+
+        fill_value = 0
+
+        for row_i in range(0, phi_numpy.shape[0]):
+            for col_i in range(0, phi_numpy.shape[1]):
+
+                phi_numpy[row_i, col_i] = fill_value
+                fill_value = fill_value + 1
+
+        phi = convert_numpy_to_lue(phi_numpy, partition_shape=partition_shape)
+
+        boundary_loc_numpy = create_zero_numpy_array(num_cols, num_rows, 0, np.uint8)
+        boundary_loc_numpy[1, 1:-1] = 1  # boundary_loc_numpy[0, :] = 1
+        # boundary_loc_numpy[-1, :] = 1
+        boundary_loc_numpy[1:-1, 1] = 1  # boundary_loc_numpy[:, 0] = 1
+        # boundary_loc_numpy[:, -1] = 1
+
+        boundary_type_numpy = create_zero_numpy_array(num_cols, num_rows, 0, np.uint8)
+        boundary_type_numpy[1, 1:-1] = 4  # boundary_type_numpy[0, :] = 4
+        # boundary_type_numpy[-1, :] = 2
+        boundary_type_numpy[1:-1, 1] = 1  # boundary_type_numpy[:, 0] = 1
+        # boundary_type_numpy[:, -1] = 3
+
+        boundary_loc = convert_numpy_to_lue(
+            boundary_loc_numpy, partition_shape=partition_shape
+        )
+        boundary_type = convert_numpy_to_lue(
+            boundary_type_numpy, partition_shape=partition_shape
+        )
+
+        # kernel_im1_j   i-1, j
+        kernel_im1_j = np.array(
+            [
+                [0, 0, 0],
+                [1, 0, 0],
+                [0, 0, 0],
+            ],
+            dtype=np.uint8,
+        )
+
+        # kernel_i_jm1   i, j-1    # Check it. It is changed compared to advection-diffusion  test model.
+        kernel_i_jm1 = np.array(
+            [
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 1, 0],
+            ],
+            dtype=np.uint8,
+        )
+
+        # kernel_ip1_j   i+1, j
+        kernel_ip1_j = np.array(
+            [
+                [0, 0, 0],
+                [0, 0, 1],
+                [0, 0, 0],
+            ],
+            dtype=np.uint8,
+        )
+
+        # kernel_i_jp1   i, j+1     # Check it. It is changed compared to advection-diffusion  test model.
+        kernel_i_jp1 = np.array(
+            [
+                [0, 1, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+            ],
+            dtype=np.uint8,
+        )
+
+        phi_update = phi
+
+        phi_update = lfr.where(
+            ((boundary_loc == 1) & (boundary_type == 1)),
+            lfr.focal_sum(phi, kernel_ip1_j),
+            phi_update,
+        )
+
+        phi_update = lfr.where(
+            ((boundary_loc == 1) & (boundary_type == 2)),
+            lfr.focal_sum(phi, kernel_i_jp1),
+            phi_update,
+        )
+
+        phi_update = lfr.where(
+            ((boundary_loc == 1) & (boundary_type == 3)),
+            lfr.focal_sum(phi, kernel_im1_j),
+            phi_update,
+        )
+
+        phi_update = lfr.where(
+            ((boundary_loc == 1) & (boundary_type == 4)),
+            lfr.focal_sum(phi, kernel_i_jm1),
+            phi_update,
+        )
+
+        phi_update_numpy = lfr.to_numpy(phi_update)
+
+        print("phi - original: \n", phi_numpy)
+        print("phi_update_numpy: \n", phi_update_numpy)
+        print("boundary_loc_numpy: \n", boundary_loc_numpy)
+        print("boundary_type_numpy: \n", boundary_type_numpy)
 
 
 if __name__ == "__main__":
