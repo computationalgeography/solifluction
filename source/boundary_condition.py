@@ -16,17 +16,18 @@ def boundary_set(
 ):
 
     # NOTE: boundary_type = (0 for Dirichlet and 1,2,3,4 for Neumann)
+    #       boundary_type is also used to adjust PDE discretization on the boundaries
 
     #     Dirichlet_boundary_type = 0
     #
-    #     ---------------------boundary_type=4----------------------
+    #     5---------------------boundary_type=4---------------------8
     #     |                                                         |
     #     |                                                         |
     # boundary_type=1           Neumann_boundary                boundary_type=3
     #     |                                                         |
     #     |                                                         |
     #     |                                                         |
-    #     ---------------------boundary_type=2----------------------
+    #     6---------------------boundary_type=2---------------------7
 
     # Dirichlet boundary imposing
 
@@ -96,8 +97,14 @@ def boundary_set(
     #     ),
     # )
 
+    # boundary type 5, 6 for Neumann condition considered as type 1
+    # boundary type 7, 8 for Neumann condition considered as type 3
+
     phi = lfr.where(
-        ((boundary_loc == 1) & (boundary_type == 1)),
+        (
+            (boundary_loc == 1)
+            & ((boundary_type == 1) | (boundary_type == 5) | (boundary_type == 6))
+        ),
         lfr.focal_sum(phi, kernel_ip1_j) - (dx * Neumann_boundary_value),
         phi,
     )
@@ -109,7 +116,10 @@ def boundary_set(
     )
 
     phi = lfr.where(
-        ((boundary_loc == 1) & (boundary_type == 3)),
+        (
+            (boundary_loc == 1)
+            & ((boundary_type == 3) | (boundary_type == 7) | (boundary_type == 8))
+        ),
         lfr.focal_sum(phi, kernel_im1_j) + (dx * Neumann_boundary_value),
         phi,
     )
@@ -119,5 +129,8 @@ def boundary_set(
         lfr.focal_sum(phi, kernel_i_jm1) + (dz * Neumann_boundary_value),
         phi,
     )
+
+    # boundary type 5, 6 for Neumann condition considered as type 1
+    # boundary type 7, 8 for Neumann condition considered as type 3
 
     return phi
