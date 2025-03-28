@@ -172,7 +172,7 @@ def boundary_set_with_numpy(
 def exact_velocity_uniform_laminal_flow(g_sin, mu, rho_density, h_layer, num_layers):
 
     nu = mu / rho_density
-    h_total = num_layers * h_layer
+    h_total = (num_layers - 1) * h_layer
 
     u = np.zeros(num_layers, dtype=np.float64)
 
@@ -825,13 +825,13 @@ class TestPackage(unittest.TestCase):
 
         time = 0
         dt = 0.01  # 0.1  # 1
-        nr_time_steps = 100
-        num_layers = 5  # 10
+        nr_time_steps = 300  # 200  # 100  # 50  # 100
+        num_layers = 50  # 20     #10  # 5
 
         mu = 10**4  # 1000  # 10**-2  # 0
         density_soil = 1000  # 2650
 
-        h_mesh_layer = 1  # 0.1  # 20
+        h_mesh_layer = 0.1  # 0.25     #0.5  # 0.5  # 1  # 0.1  # 20
 
         num_cols: int = 200  # x direction size for layers' raster
         num_rows: int = 100  # z direction size for layers' raster
@@ -944,6 +944,11 @@ class TestPackage(unittest.TestCase):
 
         Layer_list = []
 
+        d2u_x_dy2 = []
+
+        for _ in range(num_layers):
+            d2u_x_dy2.append(zero_array_lue)
+
         # NOTE: number of layers is 0 to "num_layers" for bed layer to surface layer
 
         # Assign bed layer properties
@@ -999,6 +1004,8 @@ class TestPackage(unittest.TestCase):
 
         for time_step in range(1, nr_time_steps + 1):
 
+            # d2u_x_dy2 = 0  # %%%%%
+
             time = time + dt
 
             # velocity at bed layer (layer_id = 0) is zero
@@ -1006,63 +1013,15 @@ class TestPackage(unittest.TestCase):
 
                 # calculate du2_dy2 for the right hand side of momentum (velocity) equation
 
-                if layer_id == 0:  # bed layer
-
-                    d2u_x_dy2 = second_derivatives_in_y(
-                        Layer_list[1].u_x,
-                        Layer_list[2].u_x,
-                        Layer_list[0].u_x,
-                        h_mesh,
-                        h_mesh,
-                    )
-
-                elif layer_id == num_layers - 1:  # surface layer
-
-                    d2u_x_dy2 = second_derivatives_in_y(
-                        Layer_list[num_layers - 2].u_x,
-                        Layer_list[num_layers - 1].u_x,
-                        Layer_list[num_layers - 3].u_x,
-                        h_mesh,
-                        h_mesh,
-                    )
-
-                else:
-
-                    print("layer_id :", layer_id)
-                    print(
-                        "Layer_list[layer_id].u_x.dtype: ",
-                        Layer_list[layer_id].u_x.dtype,
-                    )
-                    print(
-                        "Layer_list[layer_id + 1].u_x.dtype: ",
-                        Layer_list[layer_id + 1].u_x.dtype,
-                    )
-                    print(
-                        "Layer_list[layer_id - 1].u_x.dtype: ",
-                        Layer_list[layer_id - 1].u_x.dtype,
-                    )
-
-                    d2u_x_dy2 = second_derivatives_in_y(
-                        Layer_list[layer_id].u_x,
-                        Layer_list[layer_id + 1].u_x,
-                        Layer_list[layer_id - 1].u_x,
-                        h_mesh,
-                        h_mesh,
-                    )
-
-                # momentum in x direction for velocity calculation
-
-                d2u_x_dy2_numpy = lfr.to_numpy(d2u_x_dy2)
-
-                print("d2u_x_dy2_numpy: \n", d2u_x_dy2_numpy)
-
                 # rhs = g_sin - ((mu_array_lue / density_soil_lue) * d2u_x_dy2)
 
-                rhs = g_sin + ((mu_array_lue / density_soil_lue) * d2u_x_dy2)
+                rhs = g_sin + ((mu_array_lue / density_soil_lue) * d2u_x_dy2[layer_id])
 
-                rhs_numpy = lfr.to_numpy(rhs)
+                # rhs = g_sin
 
-                print("rhs_numpy: \n", rhs_numpy)
+                # rhs_numpy = lfr.to_numpy(rhs)
+
+                # print("rhs_numpy: \n", rhs_numpy)
 
                 Layer_list[layer_id].u_x, phi_internal = momentum_ux(
                     Layer_list[layer_id].u_x,
@@ -1105,12 +1064,64 @@ class TestPackage(unittest.TestCase):
                 # numpy_u_x = lfr.to_numpy(Layer_list[layer_id].u_x)
                 # plot_contour(numpy_u_x, f"layre_{layer_id}")
 
-                write(rhs, "test", "rhs", 0)
+                # write(rhs, "test", "rhs", 0)
                 # plot_gdal_contours("rhs-0.tif")
                 write(Layer_list[layer_id].u_x, "test", "u_x_layer", layer_id)
                 write(phi_internal, "test", "phi_internal", layer_id)
 
                 # input("Press Enter to continue ...")
+
+            for layer_id in range(0, num_layers):
+
+                if layer_id == 0:  # bed layer
+
+                    d2u_x_dy2[0] = second_derivatives_in_y(
+                        Layer_list[1].u_x,
+                        Layer_list[2].u_x,
+                        Layer_list[0].u_x,
+                        h_mesh,
+                        h_mesh,
+                    )
+
+                elif layer_id == num_layers - 1:  # surface layer
+
+                    d2u_x_dy2[-1] = second_derivatives_in_y(
+                        Layer_list[num_layers - 2].u_x,
+                        Layer_list[num_layers - 1].u_x,
+                        Layer_list[num_layers - 3].u_x,
+                        h_mesh,
+                        h_mesh,
+                    )
+
+                else:
+
+                    print("layer_id :", layer_id)
+                    print(
+                        "Layer_list[layer_id].u_x.dtype: ",
+                        Layer_list[layer_id].u_x.dtype,
+                    )
+                    print(
+                        "Layer_list[layer_id + 1].u_x.dtype: ",
+                        Layer_list[layer_id + 1].u_x.dtype,
+                    )
+                    print(
+                        "Layer_list[layer_id - 1].u_x.dtype: ",
+                        Layer_list[layer_id - 1].u_x.dtype,
+                    )
+
+                    d2u_x_dy2[layer_id] = second_derivatives_in_y(
+                        Layer_list[layer_id].u_x,
+                        Layer_list[layer_id + 1].u_x,
+                        Layer_list[layer_id - 1].u_x,
+                        h_mesh,
+                        h_mesh,
+                    )
+
+                    d2u_x_dy2_numpy = lfr.to_numpy(d2u_x_dy2[layer_id])
+
+                    print("d2u_x_dy2_numpy: \n", d2u_x_dy2_numpy)
+
+            # d2u_x_dy2 = -g_sin / (mu / density_soil)  # %%%%%
 
             CFL = (ux_result[-1] * dt) / dx
             print("CFL: ", CFL)
