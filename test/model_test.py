@@ -825,13 +825,13 @@ class TestPackage(unittest.TestCase):
 
         time = 0
         dt = 0.01  # 0.1  # 1
-        nr_time_steps = 300  # 200  # 100  # 50  # 100
-        num_layers = 50  # 20     #10  # 5
+        nr_time_steps = 500  # 400  # 500  # 200  # 50  # 100
+        num_layers = 10  # 5
 
         mu = 10**4  # 1000  # 10**-2  # 0
         density_soil = 1000  # 2650
 
-        h_mesh_layer = 0.1  # 0.25     #0.5  # 0.5  # 1  # 0.1  # 20
+        h_mesh_layer = 0.5  # 0.5  # 1  # 0.1  # 20
 
         num_cols: int = 200  # x direction size for layers' raster
         num_rows: int = 100  # z direction size for layers' raster
@@ -1042,17 +1042,18 @@ class TestPackage(unittest.TestCase):
                 )
 
                 layer_u_x_numpy = lfr.to_numpy(Layer_list[layer_id].u_x)
-                phi_internal_numpy = lfr.to_numpy(phi_internal)
 
                 ux_result[layer_id] = layer_u_x_numpy[50, 100]
 
-                print("layer_u_x_numpy: \n", layer_u_x_numpy)
-                print("phi_internal_numpy: \n", phi_internal_numpy)
+                # phi_internal_numpy = lfr.to_numpy(phi_internal)
 
-                print("ux_result[layer_id] : ", ux_result[layer_id])
-                print("u_exact[layer_id]: ", u_exact[layer_id])
+                # print("layer_u_x_numpy: \n", layer_u_x_numpy)
+                # print("phi_internal_numpy: \n", phi_internal_numpy)
 
-                print("layer_id: \n", layer_id)
+                # print("ux_result[layer_id] : ", ux_result[layer_id])
+                # print("u_exact[layer_id]: ", u_exact[layer_id])
+
+                # print("layer_id: \n", layer_id)
 
                 # print(
                 #     "Layer_list[layer_id].u_x.dtype: ",
@@ -1066,8 +1067,9 @@ class TestPackage(unittest.TestCase):
 
                 # write(rhs, "test", "rhs", 0)
                 # plot_gdal_contours("rhs-0.tif")
-                write(Layer_list[layer_id].u_x, "test", "u_x_layer", layer_id)
-                write(phi_internal, "test", "phi_internal", layer_id)
+
+                # write(Layer_list[layer_id].u_x, "test", "u_x_layer", layer_id)
+                # write(phi_internal, "test", "phi_internal", layer_id)
 
                 # input("Press Enter to continue ...")
 
@@ -1095,19 +1097,19 @@ class TestPackage(unittest.TestCase):
 
                 else:
 
-                    print("layer_id :", layer_id)
-                    print(
-                        "Layer_list[layer_id].u_x.dtype: ",
-                        Layer_list[layer_id].u_x.dtype,
-                    )
-                    print(
-                        "Layer_list[layer_id + 1].u_x.dtype: ",
-                        Layer_list[layer_id + 1].u_x.dtype,
-                    )
-                    print(
-                        "Layer_list[layer_id - 1].u_x.dtype: ",
-                        Layer_list[layer_id - 1].u_x.dtype,
-                    )
+                    # print("layer_id :", layer_id)
+                    # print(
+                    #     "Layer_list[layer_id].u_x.dtype: ",
+                    #     Layer_list[layer_id].u_x.dtype,
+                    # )
+                    # print(
+                    #     "Layer_list[layer_id + 1].u_x.dtype: ",
+                    #     Layer_list[layer_id + 1].u_x.dtype,
+                    # )
+                    # print(
+                    #     "Layer_list[layer_id - 1].u_x.dtype: ",
+                    #     Layer_list[layer_id - 1].u_x.dtype,
+                    # )
 
                     d2u_x_dy2[layer_id] = second_derivatives_in_y(
                         Layer_list[layer_id].u_x,
@@ -1117,9 +1119,9 @@ class TestPackage(unittest.TestCase):
                         h_mesh,
                     )
 
-                    d2u_x_dy2_numpy = lfr.to_numpy(d2u_x_dy2[layer_id])
+                    # d2u_x_dy2_numpy = lfr.to_numpy(d2u_x_dy2[layer_id])
 
-                    print("d2u_x_dy2_numpy: \n", d2u_x_dy2_numpy)
+                    # print("d2u_x_dy2_numpy: \n", d2u_x_dy2_numpy)
 
             # d2u_x_dy2 = -g_sin / (mu / density_soil)  # %%%%%
 
