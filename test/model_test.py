@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from source.boundary_condition import boundary_set
+from source.heat_transfer import compute_temperature_1D_in_y
 from source.io_data_process import (
     convert_numpy_to_lue,
     create_zero_numpy_array,
@@ -181,6 +182,45 @@ def exact_velocity_uniform_laminal_flow(g_sin, mu, rho_density, h_layer, num_lay
         u[i] = ((-g_sin / (2 * nu)) * (y**2)) + ((g_sin / nu) * h_total * y)
 
     return u
+
+
+def exact_heat_transfer_steady(h_total, T1, T2, num_layers):
+    """Compute the exact steady-state solution for 1D heat conduction."""
+    # Steady-state solution is independent of initial condition
+    x = np.linspace(0, h_total, num_layers)  # Creates num_layers points between 0 and L
+
+    # Compute the temperature at each x position
+    return T1 + (T2 - T1) * x / h_total
+
+
+def exact_heat_transfer_unsteady(
+    L, T1, T2, T_initial, x, Thermal_diffusivity, time, N_terms=50, Nx=100
+):
+    """Compute the analytical solution for 1D transient heat conduction.
+    T1, T2 are boundary values"""
+    T_s = T1 + (T2 - T1) * x / L  # Steady-state solution
+    T0 = T_initial(x, L)  # Initial condition passed as a function
+
+    # Compute Fourier coefficients
+    Bn = np.array(
+        [
+            (2 / L) * np.trapz((T0 - T_s) * np.sin(n * np.pi * x / L), x)
+            for n in range(1, N_terms + 1)
+        ]
+    )
+
+    # Compute transient solution
+    T_transient = np.zeros_like(x)
+    for n in range(1, N_terms + 1):
+        T_transient += (
+            Bn[n - 1]
+            * np.exp(-Thermal_diffusivity * (n * np.pi / L) ** 2 * time)
+            * np.sin(n * np.pi * x / L)
+        )
+
+    T = T_s + T_transient
+
+    return T
 
 
 class TestPackage(unittest.TestCase):
@@ -824,14 +864,17 @@ class TestPackage(unittest.TestCase):
     def test_momentum_ux_2(self):
 
         time = 0
-        dt = 0.01  # 0.1  # 1
-        nr_time_steps = 500  # 400  # 500  # 200  # 50  # 100
-        num_layers = 10  # 5
+        dt = 0.01  # 0.5  # 0.01  # 0.0005  # 0.01  # 0.1  # 1
+        nr_time_steps = 200  # 300  # 10   #  300  # 100  # 400  # 500  # 200  # 50
 
-        mu = 10**4  # 1000  # 10**-2  # 0
+        num_layers = 15  # 20  # 10  # 5
+
+        mu = 10**2  # 10**4 (ok test)  # 1000  # 10**-2  # 0
         density_soil = 1000  # 2650
 
-        h_mesh_layer = 0.5  # 0.5  # 1  # 0.1  # 20
+        h_mesh_layer = (
+            0.1  # 0.25  # 1  # 0.25  # S 0.25  # 0.5  # 0.5  # 1  # 0.1  # 20
+        )
 
         num_cols: int = 200  # x direction size for layers' raster
         num_rows: int = 100  # z direction size for layers' raster
@@ -1577,6 +1620,182 @@ class TestPackage(unittest.TestCase):
         print("phi_update_numpy: \n", phi_update_numpy)
         print("boundary_loc_numpy: \n", boundary_loc_numpy)
         print("boundary_type_numpy: \n", boundary_type_numpy)
+
+    @lfr.runtime_scope
+    def test_heat_transfer(self):
+
+        # for this test uniform thermal_diffusivity is considered
+        # uniform h_mesh is considered for layers
+
+        num_cols: int = 100  # x direction size for layers' raster
+        num_rows: int = 100  # z direction size for layers' raster
+
+        array_shape = (num_rows, num_cols)
+        partition_shape = 2 * (20,)
+
+        num_layers = 10
+
+        T_surface_value: float = 10.0
+        T_bed_value: float = 2.0
+
+        h_mesh_layer_value = 2
+
+        dt = 20
+
+        k_conductivity_heat_value: float = 5.0
+        rho_c_heat_value: float = 2.0
+
+        T_result = np.zeros(num_layers, dtype=np.float64)
+        h_total = (num_layers - 1) * h_mesh_layer_value
+
+        h_mesh = lfr.create_array(
+            array_shape,
+            dtype=np.float64,
+            fill_value=h_mesh_layer_value,
+            partition_shape=partition_shape,
+        )
+
+        zero_array_lue = lfr.create_array(
+            array_shape,
+            dtype=np.float64,
+            fill_value=0.0,
+            partition_shape=partition_shape,
+        )
+
+        T_surface_lue = lfr.create_array(
+            array_shape,
+            dtype=np.float64,
+            fill_value=T_surface_value,
+            partition_shape=partition_shape,
+        )
+
+        T_bed_lue = lfr.create_array(
+            array_shape,
+            dtype=np.float64,
+            fill_value=T_bed_value,
+            partition_shape=partition_shape,
+        )
+
+        k_conductivity_heat = lfr.create_array(
+            array_shape,
+            dtype=np.float64,
+            fill_value=k_conductivity_heat_value,
+            partition_shape=partition_shape,
+        )
+
+        rho_c_heat = lfr.create_array(
+            array_shape,
+            dtype=np.float64,
+            fill_value=rho_c_heat_value,
+            partition_shape=partition_shape,
+        )
+
+        Layer_list = []
+
+        # Assign bed layer properties
+        Layer_list.append(
+            Layer(
+                None,
+                None,
+                zero_array_lue,
+                h_mesh,
+                None,
+                None,
+                None,
+                k_conductivity_heat,
+                rho_c_heat,
+                None,
+            )
+        )
+
+        # Assign internal layers properties
+        for i in range(1, num_layers):
+            Layer_list.append(
+                Layer(
+                    None,
+                    None,
+                    zero_array_lue,
+                    h_mesh,
+                    None,
+                    None,
+                    None,
+                    k_conductivity_heat,
+                    rho_c_heat,
+                    None,
+                )
+            )
+
+        # Assign surface layer properties
+        Layer_list.append(
+            Layer(
+                None,
+                None,
+                zero_array_lue,
+                h_mesh,
+                None,
+                None,
+                None,
+                k_conductivity_heat,
+                rho_c_heat,
+                None,
+            )
+        )
+
+        # Test Case 1: steady_state
+
+        with self.subTest(
+            msg="Testing steady problem and with uniform thermal diffusivity"
+        ):
+            num_time_iteration = 100
+
+            for time_iter in range(1, num_time_iteration + 1):
+
+                # set boundary (bed and surface temperatures)
+                Layer_list[0].T = T_bed_lue
+                Layer_list[num_layers - 1].T = T_surface_lue
+
+                # compute temperatures in internal layers
+                for layer_id in range(1, num_layers - 1):
+
+                    Layer_list[layer_id].T = compute_temperature_1D_in_y(
+                        Layer_list[layer_id].k_conductivity_heat,
+                        Layer_list[layer_id + 1].k_conductivity_heat,
+                        Layer_list[layer_id - 1].k_conductivity_heat,
+                        Layer_list[layer_id].rho_c_heat,
+                        Layer_list[layer_id].T,
+                        Layer_list[layer_id + 1].T,
+                        Layer_list[layer_id - 1].T,
+                        dt,
+                        Layer_list[layer_id].h_mesh,
+                        Layer_list[layer_id - 1].h_mesh,
+                    )
+
+            for layer_id in range(0, num_layers):
+
+                layer_T_numpy = lfr.to_numpy(Layer_list[layer_id].T)
+
+                T_result[layer_id] = layer_T_numpy[50, 50]
+
+            T_exact = exact_heat_transfer_steady(
+                h_total, T_bed_value, T_surface_value, num_layers
+            )
+
+            plt.plot(
+                T_result,
+                np.arange(0, h_total, h_mesh_layer_value),
+                "b",
+                label="Calculated Velocity (ux_result)",
+            )
+            plt.plot(
+                T_exact,
+                np.arange(0, h_total, h_mesh_layer_value),
+                "r",
+                label="Exact Velocity (u_exact)",
+            )
+            plt.xlabel("Velocity")
+            plt.ylabel("height")
+            plt.legend()
+            plt.show()
 
 
 if __name__ == "__main__":

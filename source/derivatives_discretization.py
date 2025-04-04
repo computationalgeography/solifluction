@@ -2,6 +2,8 @@
 import lue.framework as lfr
 import numpy as np
 
+# Part 1: compute derivatives in x-z plan (uniform grid mesh. dx and dz are uniform)
+
 # kernel_im1_j   i-1, j
 kernel_im1_j = np.array(
     [
@@ -135,3 +137,65 @@ def dx_upwind(phi, dx, ux):
 def dz_upwind(phi, dz, uz):
 
     return lfr.where(uz >= 0, dz_backward(phi, dz), dz_forward(phi, dz))
+
+
+# part 2: calculate derivatives in y direction
+
+
+# Non-uniform layer distance in y
+def second_derivatives_in_y(
+    layer_variable_center,
+    layer_variable_up,
+    layer_variable_down,
+    dy_layers_up,
+    dy_layers_down,
+):
+
+    # layer_variable_center:center variable with FDM coeff -2 , layer_variable_up and layer_variable_down around variables with FDM coeff 1
+    # NOTE: for surface layer (backward) layer_variable_center is one layer below, and layer_variable_up and layer_variable_down are surface layer and two layers below
+
+    # dy_layers is averaged BUT certainly it is WRONG formula for discretization
+
+    d2var_dy2 = (2 / (dy_layers_up + dy_layers_down)) * (
+        ((layer_variable_up - layer_variable_center) / dy_layers_up)
+        - (((layer_variable_center - layer_variable_down) / dy_layers_down))
+    )
+
+    return d2var_dy2
+
+
+def dy_forward(
+    layer_variable_center,
+    layer_variable_forward,
+    dy,
+):
+
+    return (layer_variable_forward - layer_variable_center) / dy
+
+
+def dy_backward(
+    layer_variable_center,
+    layer_variable_backward,
+    dy,
+):
+
+    return (layer_variable_center - layer_variable_backward) / dy
+
+
+def dy_upwind(
+    layer_variable_center,
+    layer_variable_up,
+    layer_variable_down,
+    dy_up,
+    dy_down,
+    adv_coeff,
+):
+
+    # First derivative discretization for convection term (adv_coeff * d_phi/dy) in Eq like:
+    # [d_phi/dt + (adv_coeff * d_phi/dy)  - (diff_coeff * d2_phi/dy2) = rhs]
+
+    return lfr.where(
+        adv_coeff >= 0,
+        dy_backward(layer_variable_center, layer_variable_down, dy_down),
+        dy_forward(layer_variable_center, layer_variable_up, dy_up),
+    )

@@ -603,7 +603,8 @@ class Layer:
         mu_soil,
         density_soil,
         phase_state,
-        thermal_diffusivity_coeff,
+        k_conductivity_heat,
+        rho_c_heat,
         vegetation_vol_fraction,
     ):
 
@@ -614,7 +615,8 @@ class Layer:
         self.mu_soil = mu_soil  # soil viscosity
         self.gama_soil = density_soil  #  soil density
         self.phase_state = phase_state  # Phase state (fluid, solid (ice), vegetation)
-        self.thermal_diffusivity_coeff = thermal_diffusivity_coeff
+        self.k_conductivity_heat = k_conductivity_heat
+        self.rho_c_heat = rho_c_heat
         self.vegetation_vol_fraction = vegetation_vol_fraction
 
 
