@@ -8,7 +8,6 @@ from source.derivatives_discretization import (
 
 
 def phase_heat_coeff(T, T_f, k_f, k_u, c_f, c_u, W, W_u, L, rho_d):
-
     k_heat = lfr.where(
         T < T_f - DT,
         k_f,
@@ -33,7 +32,6 @@ def phase_heat_coeff(T, T_f, k_f, k_u, c_f, c_u, W, W_u, L, rho_d):
 
 
 def update_thermal_diffusivity_coeff(T, gama_soil):
-
     # (.)_f : frozen
     # (.)_u : unfrozen
     # (.)_s : soil mineral
@@ -111,9 +109,6 @@ def compute_temperature_1D_in_y(
     precomputed_value,
 ):
 
-    # T_neighbor_layer can be T_up_layer or T_down_layer depend of using forward or backward discretization
-
-    # thermal_diffusivity (k/(rho*c))
     # k: thermal conductivity
 
     T_center_layer = lfr.where(
@@ -121,14 +116,10 @@ def compute_temperature_1D_in_y(
         T_center_layer
         + (
             (dt / rho_c_center)
-            * dy_upwind(T_center_layer, T_up_layer, T_down_layer, dy_up, dy_down)
             * dy_upwind(
-                k_center,
-                k_up,
-                k_down,
-                dy_up,
-                dy_down,
+                T_center_layer, T_up_layer, T_down_layer, dy_up, dy_down, rho_c_center
             )
+            * dy_upwind(k_center, k_up, k_down, dy_up, dy_down, rho_c_center)
         )
         + (
             (dt * k_center / rho_c_center)

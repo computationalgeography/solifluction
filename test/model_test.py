@@ -47,7 +47,6 @@ from source.solifluction import (
 
 
 def h_exact_calculate(h, ux, uz, time_iteration, dt, dx, dz, value_boundary):
-
     # x ---> matrix or raster columns
     # z ---> matrix or raster rows
 
@@ -88,44 +87,36 @@ def boundary_set_with_numpy(
 
     for num_row in range(0, phi.shape[0]):
         for num_col in range(0, phi.shape[1]):
-
             if boundary_loc[num_row, num_col] & (
                 (boundary_type[num_row, num_col] == 1)
                 | (boundary_type[num_row, num_col] == 5)
                 | (boundary_type[num_row, num_col] == 6)
             ):
-
                 phi[num_row, num_col] = phi[num_row, num_col + 1] - (
                     dx * Neumann_boundary_value[num_row, num_col]
                 )
 
     for num_row in range(0, phi.shape[0]):
         for num_col in range(0, phi.shape[1]):
-
             if boundary_loc[num_row, num_col] & (boundary_type[num_row, num_col] == 2):
-
                 phi[num_row, num_col] = phi[num_row - 1, num_col] - (
                     dz * Neumann_boundary_value[num_row, num_col]
                 )
 
     for num_row in range(0, phi.shape[0]):
         for num_col in range(0, phi.shape[1]):
-
             if boundary_loc[num_row, num_col] & (
                 (boundary_type[num_row, num_col] == 3)
                 | (boundary_type[num_row, num_col] == 7)
                 | (boundary_type[num_row, num_col] == 8)
             ):
-
                 phi[num_row, num_col] = phi[num_row, num_col - 1] + (
                     dx * Neumann_boundary_value[num_row, num_col]
                 )
 
     for num_row in range(0, phi.shape[0]):
         for num_col in range(0, phi.shape[1]):
-
             if boundary_loc[num_row, num_col] & (boundary_type[num_row, num_col] == 4):
-
                 # print("num_row, num_col: ", num_row, num_col)
                 # print("num_row + 1, num_col: ", num_row + 1, num_col)
                 # print("boundary_type: \n", boundary_type)
@@ -171,7 +162,6 @@ def boundary_set_with_numpy(
 
 
 def exact_velocity_uniform_laminal_flow(g_sin, mu, rho_density, h_layer, num_layers):
-
     nu = mu / rho_density
     h_total = (num_layers - 1) * h_layer
 
@@ -279,7 +269,6 @@ class TestPackage(unittest.TestCase):
 
     @lfr.runtime_scope
     def test_mass_conservation_2D_test(self):
-
         num_cols: int = 100  # x direction
         num_rows: int = 100  # z direction
 
@@ -365,7 +354,6 @@ class TestPackage(unittest.TestCase):
         boundary_value = h_lue  # initial h is set to be boundary_value
 
         for it_time in range(1, time_iteration + 1):
-
             h_lue, flux_x_upstream, net_flux = mass_conservation_2D(
                 h_lue, u_x_lue, u_z_lue, dt, dx, dz, boundary_loc_lue, boundary_value
             )
@@ -548,7 +536,6 @@ class TestPackage(unittest.TestCase):
 
         for case in test_cases:
             with self.subTest(function=case["name"]):
-
                 d2var_dy2 = second_derivatives_in_y(
                     case["layer_variable_2"],
                     case["layer_variable_3"],
@@ -569,7 +556,6 @@ class TestPackage(unittest.TestCase):
 
     @lfr.runtime_scope
     def test_momentum_ux(self):
-
         time = 0
         dt = 0.1  # 1
         nr_time_steps = 10
@@ -743,16 +729,13 @@ class TestPackage(unittest.TestCase):
         # End: instantiate Layer objects for all layers
 
         for time_step in range(1, nr_time_steps + 1):
-
             time = time + dt
 
             # velocity at bed layer (layer_id = 0) is zero
             for layer_id in range(1, num_layers):
-
                 # calculate du2_dy2 for the right hand side of momentum (velocity) equation
 
                 if layer_id == 0:  # bed layer
-
                     d2u_x_dy2 = second_derivatives_in_y(
                         Layer_list[1].u_x,
                         Layer_list[2].u_x,
@@ -762,7 +745,6 @@ class TestPackage(unittest.TestCase):
                     )
 
                 elif layer_id == num_layers - 1:  # surface layer
-
                     d2u_x_dy2 = second_derivatives_in_y(
                         Layer_list[num_layers - 2].u_x,
                         Layer_list[num_layers - 1].u_x,
@@ -772,7 +754,6 @@ class TestPackage(unittest.TestCase):
                     )
 
                 else:
-
                     print("layer_id :", layer_id)
                     print(
                         "Layer_list[layer_id].u_x.dtype: ",
@@ -862,7 +843,6 @@ class TestPackage(unittest.TestCase):
 
     @lfr.runtime_scope
     def test_momentum_ux_2(self):
-
         time = 0
         dt = 0.01  # 0.5  # 0.01  # 0.0005  # 0.01  # 0.1  # 1
         nr_time_steps = 200  # 300  # 10   #  300  # 100  # 400  # 500  # 200  # 50
@@ -1046,14 +1026,12 @@ class TestPackage(unittest.TestCase):
         # End: instantiate Layer objects for all layers
 
         for time_step in range(1, nr_time_steps + 1):
-
             # d2u_x_dy2 = 0  # %%%%%
 
             time = time + dt
 
             # velocity at bed layer (layer_id = 0) is zero
             for layer_id in range(1, num_layers):
-
                 # calculate du2_dy2 for the right hand side of momentum (velocity) equation
 
                 # rhs = g_sin - ((mu_array_lue / density_soil_lue) * d2u_x_dy2)
@@ -1117,9 +1095,7 @@ class TestPackage(unittest.TestCase):
                 # input("Press Enter to continue ...")
 
             for layer_id in range(0, num_layers):
-
                 if layer_id == 0:  # bed layer
-
                     d2u_x_dy2[0] = second_derivatives_in_y(
                         Layer_list[1].u_x,
                         Layer_list[2].u_x,
@@ -1129,7 +1105,6 @@ class TestPackage(unittest.TestCase):
                     )
 
                 elif layer_id == num_layers - 1:  # surface layer
-
                     d2u_x_dy2[-1] = second_derivatives_in_y(
                         Layer_list[num_layers - 2].u_x,
                         Layer_list[num_layers - 1].u_x,
@@ -1139,7 +1114,6 @@ class TestPackage(unittest.TestCase):
                     )
 
                 else:
-
                     # print("layer_id :", layer_id)
                     # print(
                     #     "Layer_list[layer_id].u_x.dtype: ",
@@ -1345,7 +1319,6 @@ class TestPackage(unittest.TestCase):
 
     @lfr.runtime_scope
     def test_boundary_set(self):
-
         num_cols: int = 200  # x direction size for layers' raster
         num_rows: int = 100  # z direction size for layers' raster
 
@@ -1511,7 +1484,6 @@ class TestPackage(unittest.TestCase):
 
     @lfr.runtime_scope
     def test_kernel_multiply(self):
-
         num_cols: int = 10
         num_rows: int = 10
 
@@ -1523,7 +1495,6 @@ class TestPackage(unittest.TestCase):
 
         for row_i in range(0, phi_numpy.shape[0]):
             for col_i in range(0, phi_numpy.shape[1]):
-
                 phi_numpy[row_i, col_i] = fill_value
                 fill_value = fill_value + 1
 
@@ -1623,7 +1594,6 @@ class TestPackage(unittest.TestCase):
 
     @lfr.runtime_scope
     def test_heat_transfer(self):
-
         # for this test uniform thermal_diffusivity is considered
         # uniform h_mesh is considered for layers
 
@@ -1633,14 +1603,14 @@ class TestPackage(unittest.TestCase):
         array_shape = (num_rows, num_cols)
         partition_shape = 2 * (20,)
 
-        num_layers = 10
+        num_layers = 6
 
         T_surface_value: float = 10.0
         T_bed_value: float = 2.0
 
-        h_mesh_layer_value = 2
+        h_mesh_layer_value = 1.5
 
-        dt = 20
+        dt = 0.1
 
         k_conductivity_heat_value: float = 5.0
         rho_c_heat_value: float = 2.0
@@ -1687,6 +1657,20 @@ class TestPackage(unittest.TestCase):
             array_shape,
             dtype=np.float64,
             fill_value=rho_c_heat_value,
+            partition_shape=partition_shape,
+        )
+
+        compute_flag = lfr.create_array(
+            array_shape,
+            dtype=np.uint8,
+            fill_value=1,
+            partition_shape=partition_shape,
+        )
+
+        precomputed_value = lfr.create_array(
+            array_shape,
+            dtype=np.float64,
+            fill_value=-99,
             partition_shape=partition_shape,
         )
 
@@ -1746,17 +1730,28 @@ class TestPackage(unittest.TestCase):
         with self.subTest(
             msg="Testing steady problem and with uniform thermal diffusivity"
         ):
+
+            T_exact = exact_heat_transfer_steady(
+                h_total, T_bed_value, T_surface_value, num_layers
+            )
+
             num_time_iteration = 100
 
             for time_iter in range(1, num_time_iteration + 1):
-
                 # set boundary (bed and surface temperatures)
                 Layer_list[0].T = T_bed_lue
                 Layer_list[num_layers - 1].T = T_surface_lue
 
+                T_result[0] = T_bed_value
+                T_result[num_layers - 1] = T_surface_value
+
+                T_numpy_bed = lfr.to_numpy(Layer_list[0].T)
+                T_numpy_surf = lfr.to_numpy(Layer_list[num_layers - 1].T)
+                print("T_numpy_bed: \n", T_numpy_bed)
+                print("T_numpy_surf: \n", T_numpy_surf)
+
                 # compute temperatures in internal layers
                 for layer_id in range(1, num_layers - 1):
-
                     Layer_list[layer_id].T = compute_temperature_1D_in_y(
                         Layer_list[layer_id].k_conductivity_heat,
                         Layer_list[layer_id + 1].k_conductivity_heat,
@@ -1768,10 +1763,22 @@ class TestPackage(unittest.TestCase):
                         dt,
                         Layer_list[layer_id].h_mesh,
                         Layer_list[layer_id - 1].h_mesh,
+                        compute_flag,
+                        precomputed_value,
                     )
 
-            for layer_id in range(0, num_layers):
+                    print("layer_id: ", layer_id)
+                    T_numpy = lfr.to_numpy(Layer_list[layer_id].T)
+                    CFL = (T_numpy[50, 50] * dt) / h_mesh_layer_value
+                    print("CFL: ", CFL)
+                    print("T_numpy: \n", T_numpy)
+                    print("T_exact: ", T_exact)
 
+                print("time_iter: ", time_iter)
+
+            input("Enter key to continue ...")
+
+            for layer_id in range(0, num_layers):
                 layer_T_numpy = lfr.to_numpy(Layer_list[layer_id].T)
 
                 T_result[layer_id] = layer_T_numpy[50, 50]
@@ -1782,20 +1789,28 @@ class TestPackage(unittest.TestCase):
 
             plt.plot(
                 T_result,
-                np.arange(0, h_total, h_mesh_layer_value),
-                "b",
-                label="Calculated Velocity (ux_result)",
+                np.arange(0, h_total + h_mesh_layer_value, h_mesh_layer_value),
+                "bd--",
+                label="Calculated temperature (T_result)",
             )
             plt.plot(
                 T_exact,
-                np.arange(0, h_total, h_mesh_layer_value),
+                np.arange(0, h_total + h_mesh_layer_value, h_mesh_layer_value),
                 "r",
-                label="Exact Velocity (u_exact)",
+                label="Exact temperature (T_exact)",
             )
-            plt.xlabel("Velocity")
+            plt.xlabel("Temperature")
             plt.ylabel("height")
             plt.legend()
             plt.show()
+
+            error_threshold = 0.05
+
+            error_matrix = abs((T_exact - T_result) / T_exact)
+
+            print("numerical simulation max error is: \n", np.max(error_matrix))
+
+            self.assertLess(np.max(error_matrix), error_threshold)
 
 
 if __name__ == "__main__":
