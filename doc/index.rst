@@ -12,3 +12,10 @@ API Reference
    :members:
    :undoc-members:
    :private-members:
+
+.. automodule:: source.derivatives_discretization
+   :members: second_derivatives_in_y
+   :undoc-members:
+   :private-members:
+
+.. .. automodule:: source.derivatives_discretization.second_derivatives_in_y

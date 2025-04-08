@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from source.boundary_condition import boundary_set
+from source.derivatives_discretization import second_derivatives_in_y
 from source.heat_transfer import compute_temperature_1D_in_y
 from source.io_data_process import (
     convert_numpy_to_lue,
@@ -12,12 +13,9 @@ from source.io_data_process import (
     default_boundary_type,
     write,
 )
-from source.solifluction import (
-    Layer,
-    mass_conservation_2D,
-    momentum_ux,
-    second_derivatives_in_y,
-)
+from source.layer import Layer
+from source.mass_conservation import mass_conservation_2D
+from source.solifluction import momentum_ux
 
 # from osgeo import gdal
 
@@ -268,7 +266,7 @@ class TestPackage(unittest.TestCase):
     """
 
     @lfr.runtime_scope
-    def test_mass_conservation_2D_test(self):
+    def test_mass_conservation_2D(self):
         num_cols: int = 100  # x direction
         num_rows: int = 100  # z direction
 
@@ -845,15 +843,17 @@ class TestPackage(unittest.TestCase):
     def test_momentum_ux_2(self):
         time = 0
         dt = 0.01  # 0.5  # 0.01  # 0.0005  # 0.01  # 0.1  # 1
-        nr_time_steps = 200  # 300  # 10   #  300  # 100  # 400  # 500  # 200  # 50
+        nr_time_steps = 300  # 10   #  300  # 100  # 400  # 500  # 200  # 50
 
-        num_layers = 15  # 20  # 10  # 5
+        num_layers = 10  # 15  # 20  # 10  # 5
 
-        mu = 10**2  # 10**4 (ok test)  # 1000  # 10**-2  # 0
+        mu = (
+            10**4
+        )  # ( 10**4 ok test)    #10**2  # 10**4 (ok test)  # 1000  # 10**-2  # 0
         density_soil = 1000  # 2650
 
         h_mesh_layer = (
-            0.1  # 0.25  # 1  # 0.25  # S 0.25  # 0.5  # 0.5  # 1  # 0.1  # 20
+            0.5  # 0.25  # 1  # 0.25  # S 0.25  # 0.5  # 0.5  # 1  # 0.1  # 20
         )
 
         num_cols: int = 200  # x direction size for layers' raster
@@ -987,6 +987,7 @@ class TestPackage(unittest.TestCase):
                 phase_state_lue,
                 None,
                 None,
+                None,
             )
         )
 
@@ -1004,6 +1005,7 @@ class TestPackage(unittest.TestCase):
                     phase_state_lue,
                     None,
                     None,
+                    None,
                 )
             )
 
@@ -1018,6 +1020,7 @@ class TestPackage(unittest.TestCase):
                 mu_array_lue,
                 density_soil_lue,
                 phase_state_lue,
+                None,
                 None,
                 None,
             )
@@ -1044,7 +1047,7 @@ class TestPackage(unittest.TestCase):
 
                 # print("rhs_numpy: \n", rhs_numpy)
 
-                Layer_list[layer_id].u_x, phi_internal = momentum_ux(
+                Layer_list[layer_id].u_x, _ = momentum_ux(
                     Layer_list[layer_id].u_x,
                     phase_state_lue,
                     dx,

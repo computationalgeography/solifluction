@@ -142,7 +142,7 @@ def dz_upwind(phi, dz, uz):
 # part 2: calculate derivatives in y direction
 
 
-# Non-uniform layer distance in y
+# Second derivatives with non-uniform layer distance in y
 def second_derivatives_in_y(
     layer_variable_center,
     layer_variable_up,
@@ -150,18 +150,49 @@ def second_derivatives_in_y(
     dy_layers_up,
     dy_layers_down,
 ):
+    """
+    Calculate second derivatives for a discretization of non-uniform layer
+    distances in y.
 
-    # layer_variable_center:center variable with FDM coeff -2 , layer_variable_up and layer_variable_down around variables with FDM coeff 1
-    # NOTE: for surface layer (backward) layer_variable_center is one layer below, and layer_variable_up and layer_variable_down are surface layer and two layers below
+    - `{.}_center` represents the center layer.
+    - `{.}_up` is the upper layer.
+    - `{.}_down` is the lower layer.
+
+    Layer order:
+        - -------------- (top surface)
+        - ------- layer `{.}_up`
+        - ------- layer `{.}_center`
+        - ------- layer `{.}_down`
+        - -------------- (bottom bed)
+
+    Note:
+        For central difference (used on internal layers, which excludes boundary layers
+        like the bed and surface layers), `{.}_center`, `{.}_up`, and `{.}_down`
+        correspond to the center, upper, and lower layers, respectively.
+
+        For backward difference (used on the surface layer), `layer_variable_up`
+        represents the surface layer information, `layer_variable_center` corresponds
+        to the layer one layer below (`surface_layer_index - 1`), and
+        `layer_variable_down` represents the layer
+        two layers below (`surface_layer_index - 2`).
+
+        For forward difference (used on the bed layer), `layer_variable_down` is the bed
+        layer information, `layer_variable_center` is one layer above
+        (`bed_layer_index + 1`), and `layer_variable_up` is two layers
+        above (`bed_layer_index + 2`).
+    """
+
+    # layer_variable_center:center variable with FDM coeff -2 , layer_variable_up
+    # and layer_variable_down around variables with FDM coeff 1
+    # NOTE: for surface layer (backward) layer_variable_center is one layer below, and
+    # layer_variable_up and layer_variable_down are surface layer and two layers below
 
     # dy_layers is averaged BUT certainly it is WRONG formula for discretization
 
-    d2var_dy2 = (2 / (dy_layers_up + dy_layers_down)) * (
+    return (2 / (dy_layers_up + dy_layers_down)) * (
         ((layer_variable_up - layer_variable_center) / dy_layers_up)
-        - (((layer_variable_center - layer_variable_down) / dy_layers_down))
+        - ((layer_variable_center - layer_variable_down) / dy_layers_down)
     )
-
-    return d2var_dy2
 
 
 def dy_forward(
