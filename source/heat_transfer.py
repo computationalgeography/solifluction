@@ -7,23 +7,51 @@ from source.derivatives_discretization import (
 )
 
 
-def phase_heat_coeff(T, T_f, k_f, k_u, c_f, c_u, W, W_u, L, rho_d):
+def phase_heat_coeff(T, D_T, k_f, k_u, c_f, c_u, W, W_u, L, rho_b):
+    """
+    Compute the heat conductivity (k) and heat capacity (c)
+    as a function of temperature, considering phase change.
+
+    Parameters:
+    ----------
+    T     : Temperature (in Celsius or Kelvin, depending on input usage).
+    T_f   : Freezing temperature (typically 0°C or 273.15K).
+    D_T   : Width of the phase change envelope (in Kelvin).
+    L     : Latent heat of freezing for water (in J/kg).
+    W     : Fractional total water content of the soil by mass.
+    W_u   : Unfrozen water content that remains at (T_f - D_T),
+            typically taken as 5% of W.
+    rho_b : ? maybe Bulk density of the soil (m/V_total)
+
+    '{.}_f' : Refers to frozen-phase properties.
+              (e.g., k_f for frozen thermal conductivity, c_f for frozen heat capacity).
+    '{.}_u' : Refers to unfrozen-phase properties.
+              (e.g., k_u for unfrozen thermal conductivity, c_u for unfrozen heat capacity).
+
+    Returns:
+    -------
+    k : Effective thermal conductivity.
+    c : Effective heat capacity.
+    """
+
+    T_f = 0
+
     k_heat = lfr.where(
-        T < T_f - DT,
+        T < T_f - D_T,
         k_f,
         lfr.where(
-            (T >= T_f - DT) & (T <= T_f),
-            k_f + (((k_u - k_f) / DT) * (T - (T_f - DT))),
+            (T >= T_f - D_T) & (T <= T_f),
+            k_f + (((k_u - k_f) / D_T) * (T - (T_f - D_T))),
         ),
         k_u,
     )
 
     c_heat = lfr.where(
-        T < T_f - DT,
+        T < T_f - D_T,
         c_f,
         lfr.where(
-            (T >= T_f - DT) & (T <= T_f),
-            c_f + (L * rho_d * ((W - W_u) / DT)),
+            (T >= T_f - D_T) & (T <= T_f),
+            c_f + (L * rho_b * ((W - W_u) / D_T)),
         ),
         c_u,
     )
@@ -31,47 +59,89 @@ def phase_heat_coeff(T, T_f, k_f, k_u, c_f, c_u, W, W_u, L, rho_d):
     return k_heat, c_heat
 
 
-def update_thermal_diffusivity_coeff(T, gama_soil):
-    # (.)_f : frozen
-    # (.)_u : unfrozen
-    # (.)_s : soil mineral
-    # (.)_w : water
-    # (.)_i : ice
-    T_f = 0
-    DT = 5
-    W = 2  # fill out this ?
-    W_u = 1  # fill out this ?
-    L = 1  # fill out this ?
-    rho_d = 1  # fill out this ?
+def update_thermal_diffusivity_coeff(
+    T,
+    rho_soil,
+    D_T,
+    W,
+    W_u,
+    L,
+    rho_b,
+    k_f_s,
+    k_u_s,
+    c_f_s,
+    c_u_s,
+    k_f_w,
+    k_u_w,
+    c_f_w,
+    c_u_w,
+    k_f_i,
+    k_u_i,
+    c_f_i,
+    c_u_i,
+    vol_frac_soil,
+    vol_frac_ice,
+    vol_frac_water,
+):
+    """
+    Calculate thermal diffusivity coefficient for volume of materials considering the volume fraction
+    of different phases (water, ice, soil (mineral or rock)).
 
-    k_f_s = 1  # fill out this ?
-    k_u_s = 2  # fill out this ?
-    c_f_s = 1  # fill out this ?
-    c_u_s = 2  # fill out this ?
+    Parameters:
+    ----------
+    T           : Temperature.
+    rho_soil   : Volume fraction of the soil mineral (solid phase).
+    k:
+    c:
 
-    k_f_w = 1  # fill out this ?
-    k_u_w = 2  # fill out this ?
-    c_f_w = 1  # fill out this ?
-    c_u_w = 2  # fill out this ?
+    Phases:
+    -------
+    - `{.}_f` : Frozen phase (e.g., ice or soil with ice).
+    - `{.}_u` : Unfrozen phase (e.g., liquid water or soil without ice).
+    - `{.}_s` : Soil mineral (solid phase).
+    - `{.}_w` : Water phase.
+    - `{.}_i` : Ice phase.
 
-    k_f_i = 1  # fill out this ?
-    k_u_i = 2  # fill out this ?
-    c_f_i = 1  # fill out this ?
-    c_u_i = 2  # fill out this ?
+    Returns:
+    -------
+    k (heat conductivity) and rho_c (rho*c density multiply heat capacity).
+
+    """
+
+    # D_T = 1
+    # W = 2  # fill out this ?
+    # W_u = 1  # fill out this ?
+    # L = 1  # fill out this ?
+    # rho_b = 1  # fill out this ?
+
+    # k_f_s = 1  # fill out this ?
+    # k_u_s = 2  # fill out this ?
+    # c_f_s = 1  # fill out this ?
+    # c_u_s = 2  # fill out this ?
+
+    # k_f_w = 1  # fill out this ?
+    # k_u_w = 2  # fill out this ?
+    # c_f_w = 1  # fill out this ?
+    # c_u_w = 2  # fill out this ?
+
+    # k_f_i = 1  # fill out this ?
+    # k_u_i = 2  # fill out this ?
+    # c_f_i = 1  # fill out this ?
+    # c_u_i = 2  # fill out this ?
+
+    # vol_frac_soil = 0.5  ?
+    # vol_frac_ice = 0.2  ?
+    # vol_frac_water = 0.3  ?
 
     k_heat_s, c_heat_s = phase_heat_coeff(
-        T, T_f, k_f_s, k_u_s, c_f_s, c_u_s, W, W_u, L, rho_d
+        T, D_T, k_f_s, k_u_s, c_f_s, c_u_s, W, W_u, L, rho_b
     )
     k_heat_w, c_heat_w = phase_heat_coeff(
-        T, T_f, k_f_w, k_u_w, c_f_w, c_u_w, W, W_u, L, rho_d
+        T, D_T, k_f_w, k_u_w, c_f_w, c_u_w, W, W_u, L, rho_b
     )
     k_heat_i, c_heat_i = phase_heat_coeff(
-        T, T_f, k_f_i, k_u_i, c_f_i, c_u_i, W, W_u, L, rho_d
+        T, D_T, k_f_i, k_u_i, c_f_i, c_u_i, W, W_u, L, rho_b
     )
-
-    vol_frac_soil = 0.5
-    vol_frac_ice = 0.2
-    vol_frac_water = 0.3
 
     k_heat = (
         lfr.pow(k_heat_s, vol_frac_soil)
@@ -85,9 +155,9 @@ def update_thermal_diffusivity_coeff(T, gama_soil):
         + (c_heat_w * vol_frac_water)
     )
 
-    thermal_diffusivity = k_heat / ((gama_soil / 9.81) * c_heat)
+    rho_c = rho_soil * c_heat
 
-    return thermal_diffusivity
+    return k_heat, rho_c
 
 
 # solve Eq: [d_phi/dt + (adv_coeff * d_phi/dy)  - (diff_coeff * d2_phi/dy2) = rhs]

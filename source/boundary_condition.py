@@ -1,4 +1,5 @@
-# This module sets up the boundary conditions based on their type: Dirichlet and Neumann boundaries.
+# This module sets up the boundary conditions
+# based on their type: Dirichlet and Neumann boundaries.
 # For Neumann boundaries, only the values normal to the boundary are implemented
 
 import lue.framework as lfr
@@ -15,9 +16,13 @@ def boundary_set(
     dz,
 ):
 
-    # NOTE: boundary_type = (0 for Dirichlet and 1,2,3,4 for Neumann)
+    # NOTE: boundary_type = (0 for Dirichlet and 1,2,3,4,5,6,7,8 for Neumann)
     #       boundary_type is also used to adjust PDE discretization on the boundaries
-
+    #
+    # boundary_loc is set to 1 where a boundary condition (Dirichlet or Neumann)
+    # is imposed. Otherwise, it is set to 0, indicating that no boundary
+    # condition is imposed.
+    #
     #     Dirichlet_boundary_type = 0
     #
     #     5---------------------boundary_type=4---------------------8
@@ -30,6 +35,9 @@ def boundary_set(
     #     6---------------------boundary_type=2---------------------7
 
     # Dirichlet boundary imposing
+
+    # The boundary types are pre-specified.
+    # boundary types are defined in "io_data_process.py/default_boundary_type function"
 
     phi = lfr.where(
         ((boundary_loc == 1) & (boundary_type == 0)),
@@ -129,8 +137,5 @@ def boundary_set(
         lfr.focal_sum(phi, kernel_i_jm1) + (dz * Neumann_boundary_value),
         phi,
     )
-
-    # boundary type 5, 6 for Neumann condition considered as type 1
-    # boundary type 7, 8 for Neumann condition considered as type 3
 
     return phi

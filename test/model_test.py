@@ -15,7 +15,7 @@ from source.io_data_process import (
 )
 from source.layer import Layer
 from source.mass_conservation import mass_conservation_2D
-from source.solifluction import momentum_ux
+from source.momentum import momentum, momentum_ux
 
 # from osgeo import gdal
 
@@ -453,7 +453,8 @@ class TestPackage(unittest.TestCase):
 
     @lfr.runtime_scope
     def test_second_derivatives_in_y(self):
-        """Test second derivatives (central,forward, and backward) for different types of functions."""
+        """Test second derivatives (central,forward, and backward) for different
+        types of functions."""
 
         partition_shape = 2 * (20,)
 
@@ -1167,6 +1168,334 @@ class TestPackage(unittest.TestCase):
         plt.legend()
         plt.show()
 
+    @lfr.runtime_scope
+    def test_momentum(self):
+        time = 0
+        dt = 0.01  # 0.5  # 0.01  # 0.0005  # 0.01  # 0.1  # 1
+        nr_time_steps = 10  # 300  # 10   #  300  # 100  # 400  # 500  # 200  # 50
+
+        num_layers = 10  # 15  # 20  # 10  # 5
+
+        mu = (
+            10**4
+        )  # ( 10**4 ok test)    #10**2  # 10**4 (ok test)  # 1000  # 10**-2  # 0
+        density_soil = 1000  # 2650
+
+        h_mesh_layer = (
+            0.5  # 0.25  # 1  # 0.25  # S 0.25  # 0.5  # 0.5  # 1  # 0.1  # 20
+        )
+
+        num_cols: int = 200  # x direction size for layers' raster
+        num_rows: int = 100  # z direction size for layers' raster
+
+        dx = 1
+        dz = 1
+
+        # dh_dx = zero_array_lue
+
+        g_sin = 9.81 * np.sin(np.pi / 6)
+
+        u_exact = exact_velocity_uniform_laminal_flow(
+            g_sin, mu, density_soil, h_mesh_layer, num_layers
+        )
+
+        ux_result = np.zeros(num_layers, dtype=np.float64)
+
+        array_shape = (
+            num_rows,
+            num_cols,
+        )
+        partition_shape = 2 * (20,)
+
+        # Initial condition definition
+
+        # velocity boundary condition is Dirichlet and in all boundaries (first and last rows and columns) set to zero
+
+        # boundary_type_numpy_default, boundary_loc_numpy_default = default_boundary_type(
+        #     num_cols, num_rows, boundary_in_first_last_row_col=True
+        # )
+        # # set Dirichlet boundary type in all boundaries
+        # boundary_type_numpy_default[:, :] = 0
+
+        boundary_type_numpy_default, boundary_loc_numpy_default = default_boundary_type(
+            num_cols, num_rows, boundary_in_first_last_row_col=False
+        )
+
+        Dirichlet_boundary_value_numpy = create_zero_numpy_array(
+            num_cols, num_rows, 0, np.float64
+        )
+        Neumann_boundary_value_numpy = create_zero_numpy_array(
+            num_cols, num_rows, 0, np.float64
+        )
+
+        Dirichlet_boundary_value_numpy[[0, -1], :] = -999
+        Dirichlet_boundary_value_numpy[:, [0, -1]] = -999
+
+        boundary_loc = convert_numpy_to_lue(
+            boundary_loc_numpy_default, partition_shape=partition_shape
+        )
+
+        boundary_type = convert_numpy_to_lue(
+            boundary_type_numpy_default, partition_shape=partition_shape
+        )
+
+        Dirichlet_boundary_value_lue = convert_numpy_to_lue(
+            Dirichlet_boundary_value_numpy, partition_shape=partition_shape
+        )
+
+        Neumann_boundary_value_lue = convert_numpy_to_lue(
+            Neumann_boundary_value_numpy, partition_shape=partition_shape
+        )
+
+        print("boundary_type_numpy_default: \n", boundary_type_numpy_default)
+        print("boundary_loc_numpy_default: \n", boundary_loc_numpy_default)
+
+        print(" boundary_loc.shape : ", boundary_loc.shape)
+
+        zero_array_lue = lfr.create_array(
+            array_shape,
+            dtype=np.float64,
+            fill_value=0.0,
+            partition_shape=partition_shape,
+        )
+
+        # phase_state: 0 solid  --> (frozen soil), 1 --> (fluid or unfrozen), now vegetation is ignored in phase_state but it is considered in vegetation_vol_fraction
+        # In this test phase_state is 1 --> (fluid or unfrozen)
+
+        phase_state_lue = lfr.create_array(
+            array_shape,
+            dtype=np.uint8,
+            fill_value=1,
+            partition_shape=partition_shape,
+        )
+
+        mu_array_lue = lfr.create_array(
+            array_shape,
+            dtype=np.float64,
+            fill_value=mu,
+            partition_shape=partition_shape,
+        )
+
+        density_soil_lue = lfr.create_array(
+            array_shape,
+            dtype=np.float64,
+            fill_value=density_soil,
+            partition_shape=partition_shape,
+        )
+
+        h_mesh = lfr.create_array(
+            array_shape,
+            dtype=np.float64,
+            fill_value=h_mesh_layer,
+            partition_shape=partition_shape,
+        )
+
+        # End: Initial condition definition
+
+        # instantiate Layer objects for all layers
+
+        Layer_list = []
+
+        d2u_x_dy2 = []
+
+        for _ in range(num_layers):
+            d2u_x_dy2.append(zero_array_lue)
+
+        # NOTE: number of layers is 0 to "num_layers" for bed layer to surface layer
+
+        # Assign bed layer properties
+
+        Layer_list.append(
+            Layer(
+                zero_array_lue,
+                zero_array_lue,
+                None,
+                h_mesh,
+                mu_array_lue,
+                density_soil_lue,
+                phase_state_lue,
+                None,
+                None,
+                None,
+            )
+        )
+
+        # Assign internal layers properties
+
+        for _ in range(1, num_layers):
+            Layer_list.append(
+                Layer(
+                    zero_array_lue,
+                    zero_array_lue,
+                    None,
+                    h_mesh,
+                    mu_array_lue,
+                    density_soil_lue,
+                    phase_state_lue,
+                    None,
+                    None,
+                    None,
+                )
+            )
+
+        # Assign surface layer properties
+
+        Layer_list.append(
+            Layer(
+                zero_array_lue,
+                zero_array_lue,
+                None,
+                h_mesh,
+                mu_array_lue,
+                density_soil_lue,
+                phase_state_lue,
+                None,
+                None,
+                None,
+            )
+        )
+
+        # End: instantiate Layer objects for all layers
+
+        for time_step in range(1, nr_time_steps + 1):
+            # d2u_x_dy2 = 0  # %%%%%
+
+            time = time + dt
+
+            # velocity at bed layer (layer_id = 0) is zero
+            for layer_id in range(1, num_layers):
+                # calculate du2_dy2 for the right hand side of momentum (velocity) equation
+
+                # rhs = g_sin - ((mu_array_lue / density_soil_lue) * d2u_x_dy2)
+
+                rhs = g_sin + ((mu_array_lue / density_soil_lue) * d2u_x_dy2[layer_id])
+
+                # rhs = g_sin
+
+                # rhs_numpy = lfr.to_numpy(rhs)
+
+                # print("rhs_numpy: \n", rhs_numpy)
+
+                Layer_list[layer_id].u_x, _ = momentum(
+                    Layer_list[layer_id].u_x,
+                    phase_state_lue,
+                    dx,
+                    dz,
+                    dt,
+                    Layer_list[layer_id].u_x,
+                    zero_array_lue,
+                    0.0,
+                    0.0,
+                    rhs,
+                    h_mesh,
+                    boundary_loc,
+                    boundary_type,
+                    Dirichlet_boundary_value_lue,
+                    Neumann_boundary_value_lue,
+                )
+
+                layer_u_x_numpy = lfr.to_numpy(Layer_list[layer_id].u_x)
+
+                ux_result[layer_id] = layer_u_x_numpy[50, 100]
+
+                # phi_internal_numpy = lfr.to_numpy(phi_internal)
+
+                # print("layer_u_x_numpy: \n", layer_u_x_numpy)
+                # print("phi_internal_numpy: \n", phi_internal_numpy)
+
+                # print("ux_result[layer_id] : ", ux_result[layer_id])
+                # print("u_exact[layer_id]: ", u_exact[layer_id])
+
+                # print("layer_id: \n", layer_id)
+
+                # print(
+                #     "Layer_list[layer_id].u_x.dtype: ",
+                #     Layer_list[layer_id].u_x.dtype,
+                # )
+
+                # plot_contour(rhs, "rhs")
+
+                # numpy_u_x = lfr.to_numpy(Layer_list[layer_id].u_x)
+                # plot_contour(numpy_u_x, f"layre_{layer_id}")
+
+                # write(rhs, "test", "rhs", 0)
+                # plot_gdal_contours("rhs-0.tif")
+
+                # write(Layer_list[layer_id].u_x, "test", "u_x_layer", layer_id)
+                # write(phi_internal, "test", "phi_internal", layer_id)
+
+                # input("Press Enter to continue ...")
+
+            for layer_id in range(0, num_layers):
+                if layer_id == 0:  # bed layer
+                    d2u_x_dy2[0] = second_derivatives_in_y(
+                        Layer_list[1].u_x,
+                        Layer_list[2].u_x,
+                        Layer_list[0].u_x,
+                        h_mesh,
+                        h_mesh,
+                    )
+
+                elif layer_id == num_layers - 1:  # surface layer
+                    d2u_x_dy2[-1] = second_derivatives_in_y(
+                        Layer_list[num_layers - 2].u_x,
+                        Layer_list[num_layers - 1].u_x,
+                        Layer_list[num_layers - 3].u_x,
+                        h_mesh,
+                        h_mesh,
+                    )
+
+                else:
+                    # print("layer_id :", layer_id)
+                    # print(
+                    #     "Layer_list[layer_id].u_x.dtype: ",
+                    #     Layer_list[layer_id].u_x.dtype,
+                    # )
+                    # print(
+                    #     "Layer_list[layer_id + 1].u_x.dtype: ",
+                    #     Layer_list[layer_id + 1].u_x.dtype,
+                    # )
+                    # print(
+                    #     "Layer_list[layer_id - 1].u_x.dtype: ",
+                    #     Layer_list[layer_id - 1].u_x.dtype,
+                    # )
+
+                    d2u_x_dy2[layer_id] = second_derivatives_in_y(
+                        Layer_list[layer_id].u_x,
+                        Layer_list[layer_id + 1].u_x,
+                        Layer_list[layer_id - 1].u_x,
+                        h_mesh,
+                        h_mesh,
+                    )
+
+                    # d2u_x_dy2_numpy = lfr.to_numpy(d2u_x_dy2[layer_id])
+
+                    # print("d2u_x_dy2_numpy: \n", d2u_x_dy2_numpy)
+
+            # d2u_x_dy2 = -g_sin / (mu / density_soil)  # %%%%%
+
+            CFL = (ux_result[-1] * dt) / dx
+            print("CFL: ", CFL)
+            print("time_step: ", time_step)
+            # input("Press Enter to continue ...")
+
+        plt.plot(
+            ux_result,
+            np.arange(0, h_mesh_layer * num_layers, h_mesh_layer),
+            "b",
+            label="Calculated Velocity (ux_result)",
+        )
+        plt.plot(
+            u_exact,
+            np.arange(0, h_mesh_layer * num_layers, h_mesh_layer),
+            "r",
+            label="Exact Velocity (u_exact)",
+        )
+        plt.xlabel("Velocity")
+        plt.ylabel("height")
+        plt.legend()
+        plt.show()
+
     """
     @lfr.runtime_scope
     def test_boundary_set_0(self):
@@ -1696,7 +2025,7 @@ class TestPackage(unittest.TestCase):
         )
 
         # Assign internal layers properties
-        for i in range(1, num_layers):
+        for _ in range(1, num_layers):
             Layer_list.append(
                 Layer(
                     None,

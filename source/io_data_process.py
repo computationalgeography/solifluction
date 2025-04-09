@@ -59,7 +59,8 @@ def write(lue_array, write_pathname_directory, file_name, iteration):
 
 
 def default_boundary_type(num_cols, num_rows, boundary_in_first_last_row_col=False):
-    # boundary_in_first_last_row_col if the first and last rows and columns are considered as boundaries this switch to True
+    # boundary_in_first_last_row_col if the first and last rows and
+    # columns are considered as boundaries this switch to True
 
     boundary_loc_numpy = create_zero_numpy_array(num_cols, num_rows, 0, np.uint8)
     boundary_type_numpy_default = create_zero_numpy_array(
@@ -73,7 +74,8 @@ def default_boundary_type(num_cols, num_rows, boundary_in_first_last_row_col=Fal
         boundary_loc_numpy[:, 0] = 1  # first column
         boundary_loc_numpy[:, -1] = 1  # last column
 
-        # boundary_type_numpy_default is the default boundary type. It is overwritten only if Dirichlet condition (type = 0) is considered
+        # boundary_type_numpy_default is the default boundary type.
+        # It is overwritten only if Dirichlet condition (type = 0) is considered
 
         boundary_type_numpy_default[:, 0] = 1
         boundary_type_numpy_default[0, :] = 4
