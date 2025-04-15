@@ -1,4 +1,5 @@
 import lue.framework as lfr
+import numpy as np
 
 import source.derivatives_discretization as fdm
 from source.boundary_condition import boundary_set
@@ -19,6 +20,9 @@ from source.boundary_condition import boundary_set
 #     |                                                         |
 #     6---------------------boundary_type=2---------------------7
 
+""" 
+# momentum function is the general form of momentum solver but it has not been tested. 
+# It can be considered in the future. momentum_x function works well for now.
 
 def momentum(
     phi,
@@ -201,8 +205,7 @@ def momentum(
 
     return phi, phi_internal
 
-
-import numpy as np
+    """
 
 
 def momentum_ux(

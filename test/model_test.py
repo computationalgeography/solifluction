@@ -15,7 +15,8 @@ from source.io_data_process import (
 )
 from source.layer import Layer
 from source.mass_conservation import mass_conservation_2D
-from source.momentum import momentum, momentum_ux
+from source.momentum import momentum_ux
+from source.vof import calculate_total_h, h_mesh_assign
 
 # from osgeo import gdal
 
@@ -209,6 +210,14 @@ def exact_heat_transfer_unsteady(
     T = T_s + T_transient
 
     return T
+
+
+def update_lue_data(lue_data):
+    lue_data += 1
+
+
+def update_numpy_data(numpy_data):
+    numpy_data += 1
 
 
 class TestPackage(unittest.TestCase):
@@ -1168,6 +1177,10 @@ class TestPackage(unittest.TestCase):
         plt.legend()
         plt.show()
 
+    """ 
+    # momentum function is the general form of momentum solver but it has not been tested. 
+    # It can be considered in the future. momentum_x function works well for now.
+
     @lfr.runtime_scope
     def test_momentum(self):
         time = 0
@@ -1495,6 +1508,8 @@ class TestPackage(unittest.TestCase):
         plt.ylabel("height")
         plt.legend()
         plt.show()
+
+    """
 
     """
     @lfr.runtime_scope
@@ -2143,6 +2158,221 @@ class TestPackage(unittest.TestCase):
             print("numerical simulation max error is: \n", np.max(error_matrix))
 
             self.assertLess(np.max(error_matrix), error_threshold)
+
+    @lfr.runtime_scope
+    def test_h_mesh_assign(self):
+
+        num_cols: int = 10  # x direction size for layers' raster
+        num_rows: int = 10  # z direction size for layers' raster
+
+        array_shape = (num_rows, num_cols)
+        partition_shape = 2 * (2,)
+
+        zero_lue = lfr.create_array(
+            array_shape,
+            dtype=np.float64,
+            fill_value=0.0,
+            partition_shape=partition_shape,
+        )
+
+        num_layers = 6
+
+        layer_list = []
+
+        # Assign bed layer properties
+        layer_list.append(
+            Layer(
+                None,
+                None,
+                None,
+                zero_lue,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+        )
+
+        # Assign internal layers properties
+        for _ in range(1, num_layers):
+            layer_list.append(
+                Layer(
+                    None,
+                    None,
+                    None,
+                    zero_lue,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                )
+            )
+
+        # Assign surface layer properties
+        layer_list.append(
+            Layer(
+                None,
+                None,
+                None,
+                zero_lue,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+        )
+
+        print(
+            "layer_list[3].h_mesh for initial array: ",
+            layer_list[3].h_mesh.dtype,
+        )
+
+        h_total_numpy = np.zeros(array_shape, dtype=np.float64)
+
+        h_mesh_step_value = 10.0
+
+        for i_rows in range(0, num_rows):
+            for i_cols in range(0, num_cols):
+
+                h_total_numpy[i_rows, i_cols] = (
+                    12.55 + (num_cols - i_cols - 1) * h_mesh_step_value
+                )
+
+        h_total_lue = convert_numpy_to_lue(h_total_numpy, partition_shape)
+
+        plt.contourf(h_total_numpy)
+        plt.colorbar()
+        plt.show()
+
+        h_mesh_assign(h_total_lue, num_layers, h_mesh_step_value, layer_list)
+
+        layer_0_h_mesh_numpy = lfr.to_numpy(layer_list[0].h_mesh)
+        layer_1_h_mesh_numpy = lfr.to_numpy(layer_list[1].h_mesh)
+        layer_2_h_mesh_numpy = lfr.to_numpy(layer_list[2].h_mesh)
+        layer_3_h_mesh_numpy = lfr.to_numpy(layer_list[3].h_mesh)
+        layer_4_h_mesh_numpy = lfr.to_numpy(layer_list[4].h_mesh)
+        layer_5_h_mesh_numpy = lfr.to_numpy(layer_list[5].h_mesh)
+        h_total_lue_numpy = lfr.to_numpy(h_total_lue)
+
+        # exact_h_mesh_layer_3 = h_total_numpy - (3 * h_mesh_step_value)
+        # exact_h_mesh_layer_3 = np.where(
+        #     exact_h_mesh_layer_3 <= 0,
+        #     0,
+        #     h_mesh_step_value,
+        # )
+        # exact_h_mesh_layer_3 = np.where(
+        #     exact_h_mesh_layer_3 < h_mesh_step_value,
+        #     exact_h_mesh_layer_3,
+        #     h_mesh_step_value,
+        # )
+
+        exact_h_mesh_layer_3 = [
+            [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 2.55, 0.0, 0.0],
+            [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 2.55, 0.0, 0.0],
+            [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 2.55, 0.0, 0.0],
+            [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 2.55, 0.0, 0.0],
+            [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 2.55, 0.0, 0.0],
+            [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 2.55, 0.0, 0.0],
+            [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 2.55, 0.0, 0.0],
+            [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 2.55, 0.0, 0.0],
+            [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 2.55, 0.0, 0.0],
+            [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 2.55, 0.0, 0.0],
+        ]
+
+        plt.contourf(layer_3_h_mesh_numpy)
+        plt.colorbar()
+        plt.show()
+        plt.title("layer_3_h_mesh_numpy")
+
+        plt.contourf(exact_h_mesh_layer_3)
+        plt.colorbar()
+        plt.show()
+        plt.title("exact_h_mesh_layer_3")
+
+        print(
+            "layer_0_h_mesh_numpy: \n",
+            layer_0_h_mesh_numpy,
+        )
+        print(
+            "layer_1_h_mesh_numpy: \n",
+            layer_1_h_mesh_numpy,
+        )
+        print(
+            "layer_2_h_mesh_numpy: \n",
+            layer_2_h_mesh_numpy,
+        )
+        print(
+            "layer_3_h_mesh_numpy: \n",
+            layer_3_h_mesh_numpy,
+        )
+        print(
+            "layer_4_h_mesh_numpy: \n",
+            layer_4_h_mesh_numpy,
+        )
+        print(
+            "layer_5_h_mesh_numpy: \n",
+            layer_5_h_mesh_numpy,
+        )
+
+        print(
+            "h_total_lue_numpy: \n",
+            h_total_lue_numpy,
+        )
+
+        error_threshold = 10e-8
+
+        error_matrix = abs(exact_h_mesh_layer_3 - layer_3_h_mesh_numpy)
+        # print("exact_h_mesh_layer_3: ", exact_h_mesh_layer_3)
+        # print("layer_3_h_mesh_numpy: ", layer_3_h_mesh_numpy)
+
+        print("simulation max error is: \n", np.max(error_matrix))
+
+        print("error_matrix: ", error_matrix)
+
+        self.assertLess(np.max(error_matrix), error_threshold)
+
+        h_total_retrieved = calculate_total_h(layer_list)
+        h_total_retrieved_numpy = lfr.to_numpy(h_total_retrieved)
+
+        print("h_total_retrieved_numpy: ", h_total_retrieved_numpy)
+
+        self.assertLess(
+            np.max(abs(h_total_numpy - h_total_retrieved_numpy)), error_threshold
+        )
+
+    @lfr.runtime_scope
+    def test_pass_reference_lue_dataframe(self):
+
+        num_cols: int = 100  # x direction size for layers' raster
+        num_rows: int = 100  # z direction size for layers' raster
+
+        array_shape = (num_rows, num_cols)
+        partition_shape = 2 * (20,)
+
+        lue_data = lfr.create_array(
+            array_shape,
+            dtype=np.float64,
+            fill_value=10.0,
+            partition_shape=partition_shape,
+        )
+
+        numpy_data = np.zeros(array_shape)
+        numpy_data[:, :] = 25
+
+        update_lue_data(lue_data)
+
+        lue_data_numpy = lfr.to_numpy(lue_data)
+        print("lue_data_numpy: ", lue_data_numpy)
+
+        update_numpy_data(numpy_data)
+
+        print("numpy_data: ", numpy_data)
 
 
 if __name__ == "__main__":
