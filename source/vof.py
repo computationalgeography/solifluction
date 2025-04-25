@@ -1,9 +1,20 @@
 import lue.framework as lfr
 import numpy as np
 
+from source.boundary_condition import boundary_set
 
-def mass_conservation_2D(
-    phi, u_x_mesh, u_z_mesh, dt, dx, dz, boundary_loc, boundary_value
+
+def mass_conservation_2D_vof(
+    phi,
+    u_x_mesh,
+    u_z_mesh,
+    dt,
+    dx,
+    dz,
+    boundary_loc,
+    boundary_type,
+    Dirichlet_boundary_value,
+    Neumann_boundary_value,
 ):
     """
     This function solves 2D mass conservation in each layer.
@@ -109,11 +120,17 @@ def mass_conservation_2D(
     # net_flux = flux_x_upstream - (u_x_mesh * phi)
     # return phi, flux_x_upstream, net_flux
 
-    return lfr.where(
-        boundary_loc,
-        boundary_value,
+    phi = boundary_set(
         phi_internal,
+        boundary_loc,
+        boundary_type,
+        Dirichlet_boundary_value,
+        Neumann_boundary_value,
+        dx,
+        dz,
     )
+
+    return phi
 
 
 def calculate_total_h(layer_list):
@@ -126,8 +143,87 @@ def calculate_total_h(layer_list):
     return h_total
 
 
-# This function does not work s expect since
-# the lue dataframe does not support passing by reference and in place update
+# source function h_mesh_assign
+# def h_mesh_assign(h_total, num_layers, prespecified_uniform_h_mesh_value, layer_list):
+
+#     h_total_remain = h_total
+
+#     layer_list[0].h_mesh = lfr.where(
+#         h_total_remain < prespecified_uniform_h_mesh_value,
+#         h_total_remain,
+#         prespecified_uniform_h_mesh_value,
+#     )
+
+#     h_total_remain = h_total_remain - prespecified_uniform_h_mesh_value
+
+#     h_total_remain = lfr.where(
+#         h_total_remain < 0,
+#         0,
+#         h_total_remain,
+#     )
+
+#     h_mesh_numpy = lfr.to_numpy(layer_list[0].h_mesh)
+
+#     h_total_remain_numpy = lfr.to_numpy(h_total_remain)
+
+#     print(
+#         "h_mesh_numpy_0: \n",
+#         h_mesh_numpy,
+#     )
+
+#     print(
+#         "h_total_remain_numpy_0: \n",
+#         h_total_remain_numpy,
+#     )
+
+#     # input(" enter key to continue ...")
+
+#     for i in range(1, num_layers):
+
+#         layer_list[i].h_mesh = lfr.where(
+#             h_total_remain < prespecified_uniform_h_mesh_value,
+#             h_total_remain,
+#             prespecified_uniform_h_mesh_value,
+#         )
+
+#         h_total_remain = h_total_remain - prespecified_uniform_h_mesh_value
+
+#         h_total_remain = lfr.where(
+#             h_total_remain < 0,
+#             0,
+#             h_total_remain,
+#         )
+
+#         h_mesh_numpy = lfr.to_numpy(layer_list[i].h_mesh)
+
+#         h_total_remain_numpy = lfr.to_numpy(h_total_remain)
+
+#         print(
+#             f"h_mesh_numpy_{i}: \n",
+#             h_mesh_numpy,
+#         )
+
+#         print(
+#             f"h_total_remain_numpy_{i}: \n",
+#             h_total_remain_numpy,
+#         )
+
+#         # input(" enter key to continue ...")
+
+
+# # def h_mesh_assign_1(remained_h_total_to_assign, prespecified_uniform_h_mesh_value):
+
+# #     remained_h_total_to_assign = (
+# #         remained_h_total_to_assign - prespecified_uniform_h_mesh_value
+# #     )
+
+# #     h_mesh = lfr.where(
+# #         remained_h_total_to_assign < 0,
+# #         remained_h_total_to_assign + prespecified_uniform_h_mesh_value,
+# #         prespecified_uniform_h_mesh_value,
+# #     )
+
+# #     return h_mesh, remained_h_total_to_assign
 
 
 def h_mesh_assign(h_total, num_layers, prespecified_uniform_h_mesh_value, layer_list):
@@ -148,22 +244,6 @@ def h_mesh_assign(h_total, num_layers, prespecified_uniform_h_mesh_value, layer_
         h_total_remain,
     )
 
-    h_mesh_numpy = lfr.to_numpy(layer_list[0].h_mesh)
-
-    h_total_remain_numpy = lfr.to_numpy(h_total_remain)
-
-    print(
-        "h_mesh_numpy_0: \n",
-        h_mesh_numpy,
-    )
-
-    print(
-        "h_total_remain_numpy_0: \n",
-        h_total_remain_numpy,
-    )
-
-    # input(" enter key to continue ...")
-
     for i in range(1, num_layers):
 
         layer_list[i].h_mesh = lfr.where(
@@ -179,34 +259,3 @@ def h_mesh_assign(h_total, num_layers, prespecified_uniform_h_mesh_value, layer_
             0,
             h_total_remain,
         )
-
-        h_mesh_numpy = lfr.to_numpy(layer_list[i].h_mesh)
-
-        h_total_remain_numpy = lfr.to_numpy(h_total_remain)
-
-        print(
-            f"h_mesh_numpy_{i}: \n",
-            h_mesh_numpy,
-        )
-
-        print(
-            f"h_total_remain_numpy_{i}: \n",
-            h_total_remain_numpy,
-        )
-
-        # input(" enter key to continue ...")
-
-
-# def h_mesh_assign_1(remained_h_total_to_assign, prespecified_uniform_h_mesh_value):
-
-#     remained_h_total_to_assign = (
-#         remained_h_total_to_assign - prespecified_uniform_h_mesh_value
-#     )
-
-#     h_mesh = lfr.where(
-#         remained_h_total_to_assign < 0,
-#         remained_h_total_to_assign + prespecified_uniform_h_mesh_value,
-#         prespecified_uniform_h_mesh_value,
-#     )
-
-#     return h_mesh, remained_h_total_to_assign
