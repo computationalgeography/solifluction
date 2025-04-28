@@ -1,0 +1,39 @@
+name: Install and Test on Linux
+
+on:
+  push:
+    branches:
+      # - '*'  # Runs on all branches
+      - 'draft_with_heat_transfer'
+  pull_request:
+    branches:
+      # - '*'  # Runs on all pull requests
+      - 'draft_with_heat_transfer'
+
+jobs:
+  test-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Conda (Linux)
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          miniconda-version: 'latest'
+          python-version: '3.10'
+          auto-activate-base: false
+
+      - name: Create Conda environment and install lue
+        run: |
+          conda create --name lue python=3.10 -y
+          source ~/miniconda3/etc/profile.d/conda.sh  # Ensure conda is initialized
+          conda activate lue
+          conda install -c conda-forge lue -y
+
+      # - name: Run tests (Linux)  # Uncomment and fill out this part when you're ready to add test commands
+      #   run: |
+      #     source ~/miniconda3/etc/profile.d/conda.sh  # Ensure conda is initialized
+      #     conda activate lue
+      #     pytest  # or any other test command
