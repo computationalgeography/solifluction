@@ -35,6 +35,7 @@ jobs:
 
       - name: Create Conda environment and install lue
         run: |
+          source ~/.bashrc  # Re-source to apply the activation command
           conda create --name lue python=3.10 -y  # Create the Conda environment
           conda activate lue  # Activate the environment
           conda install -c conda-forge lue -y  # Install lue in the environment
