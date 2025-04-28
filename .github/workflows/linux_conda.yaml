@@ -27,16 +27,21 @@ jobs:
 
       - name: Initialize Conda
         run: |
-          conda init bash  # Initializes Conda to work with bash shell
-          source ~/.bashrc  # Applies the changes from conda init
+          echo "Initializing Conda..."
+          conda init --all  # Initialize Conda for all shells
+          source ~/.bashrc  # Apply the changes from conda init
+          echo "Cond initialized, checking PATH:"
+          echo $PATH  # Check the environment variables to verify conda is working
 
       - name: Create Conda environment and install lue
         run: |
-          conda create --name lue python=3.10 -y
-          conda activate lue
-          conda install -c conda-forge lue -y
+          conda create --name lue python=3.10 -y  # Create the Conda environment
+          conda activate lue  # Activate the environment
+          conda install -c conda-forge lue -y  # Install lue in the environment
+          echo "Installation complete!"
 
-      # - name: Run tests (Linux)  # Uncomment and fill out this part when you're ready to add test commands
+      # Uncomment and fill out this part when you're ready to add test commands
+      # - name: Run tests (Linux)
       #   run: |
       #     conda activate lue
       #     pytest  # or any other test command
