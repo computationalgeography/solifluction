@@ -10,38 +10,64 @@ on:
       # - '*'  # Runs on all pull requests
       - 'draft_with_heat_transfer'
 
+# jobs:
+#   test-linux:
+#     runs-on: ubuntu-latest
+
+#     defaults:
+#       run:
+#         shell: bash -l {0}  # <-- Add this to make every run block use full bash login shell
+
+
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v2
+
+#       - name: Set up Conda (Linux)
+#         uses: conda-incubator/setup-miniconda@v2
+#         with:
+#           miniconda-version: 'latest'
+#           python-version: '3.10'
+#           auto-activate-base: false
+
+#       - name: Create Conda environment and install lue
+#         run: |
+#           conda create --name lue python=3.10
+#           conda activate lue  
+#           conda install -c conda-forge lue
+#           echo "Installation complete!"
+#           export LD_PRELOAD=$(find $CONDA_PREFIX -name libtcmalloc_minimal.so.4)
+#           python -c 'import lue; print(f"lue: {lue.__version__} ({lue.git_short_sha1})")'
+
+#       - name: Run Unit Tests
+#         run: |
+#           conda activate lue
+#           export LD_PRELOAD=$(find $CONDA_PREFIX -name libtcmalloc_minimal.so.4)
+#           python -c "from lue import __version__; print('LUE version:', __version__)"
+#           # python -m unittest -v test.model_test.TestPackage.test_second_derivatives_in_y
+
+
 jobs:
-  test-linux:
+  build:
     runs-on: ubuntu-latest
 
     defaults:
       run:
-        shell: bash -l {0}  # <-- Add this to make every run block use full bash login shell
-
+        shell: bash -l {0}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-      - name: Set up Conda (Linux)
-        uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v3
         with:
-          miniconda-version: 'latest'
-          python-version: '3.10'
-          auto-activate-base: false
+          miniforge-version: latest
+          auto-update-conda: true
+          conda-solver: "libmamba"
+          python-version: 3.12
 
-      - name: Create Conda environment and install lue
+      - name: setup platform
         run: |
-          conda create --name lue python=3.10
-          conda activate lue  
-          conda install -c conda-forge lue
-          echo "Installation complete!"
+          conda env create --file=environment/configuration/conda_environment.yml
+          conda activate lue_tutorial
           export LD_PRELOAD=$(find $CONDA_PREFIX -name libtcmalloc_minimal.so.4)
           python -c 'import lue; print(f"lue: {lue.__version__} ({lue.git_short_sha1})")'
-
-      - name: Run Unit Tests
-        run: |
-          conda activate lue
-          export LD_PRELOAD=$(find $CONDA_PREFIX -name libtcmalloc_minimal.so.4)
-          python -c "from lue import __version__; print('LUE version:', __version__)"
-          # python -m unittest -v test.model_test.TestPackage.test_second_derivatives_in_y

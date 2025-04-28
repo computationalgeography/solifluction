@@ -1,0 +1,12 @@
+name: lue_tutorial
+channels:
+- conda-forge
+- nodefaults
+dependencies:
+- docopt
+- gdal
+- imageio
+- ipython  # Optional
+- matplotlib
+- lue==0.3.9
+- rasterio
