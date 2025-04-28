@@ -32,12 +32,14 @@ jobs:
 
       - name: Create Conda environment and install lue
         run: |
-          conda create --name lue python=3.10 -y 
+          conda create --name lue python=3.10
           conda activate lue  
-          conda install -c conda-forge lue -y
+          conda install -c conda-forge lue
           echo "Installation complete!"
 
       - name: Run Unit Tests
         run: |
           conda activate lue
+          export LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4"
+          python -c "from lue import __version__; print('LUE version:', __version__)"
           python -m unittest -v test.model_test.TestPackage.test_second_derivatives_in_y
