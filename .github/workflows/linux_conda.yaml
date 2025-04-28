@@ -28,12 +28,10 @@ jobs:
       - name: Create Conda environment and install lue
         run: |
           conda create --name lue python=3.10 -y
-          source ~/miniconda3/etc/profile.d/conda.sh  # Ensure conda is initialized
           conda activate lue
           conda install -c conda-forge lue -y
 
       # - name: Run tests (Linux)  # Uncomment and fill out this part when you're ready to add test commands
       #   run: |
-      #     source ~/miniconda3/etc/profile.d/conda.sh  # Ensure conda is initialized
       #     conda activate lue
       #     pytest  # or any other test command
