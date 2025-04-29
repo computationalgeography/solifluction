@@ -1,4 +1,4 @@
-name: lue_tutorial
+name: lue
 channels:
 - conda-forge
 - nodefaults

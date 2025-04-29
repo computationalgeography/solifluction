@@ -65,9 +65,15 @@ jobs:
           conda-solver: "libmamba"
           python-version: 3.12
 
-      - name: setup platform
+      - name: Create Conda environment and install lue
         run: |
           conda env create --file=environment/configuration/conda_environment.yml
-          conda activate lue_tutorial
+          conda activate lue
           export LD_PRELOAD=$(find $CONDA_PREFIX -name libtcmalloc_minimal.so.4)
           python -c 'import lue; print(f"lue: {lue.__version__} ({lue.git_short_sha1})")'
+
+      - name: run test units
+        run: |
+          conda activate lue
+          export LD_PRELOAD=$(find $CONDA_PREFIX -name libtcmalloc_minimal.so.4)
+          python -m unittest -v test.model_test.TestPackage.test_second_derivatives_in_y
