@@ -77,3 +77,4 @@ jobs:
           conda activate lue
           export LD_PRELOAD=$(find $CONDA_PREFIX -name libtcmalloc_minimal.so.4)
           python -m unittest -v test.model_test.TestPackage.test_second_derivatives_in_y
+          python -m unittest -v test.model_test.TestPackage.test_boundary_set
