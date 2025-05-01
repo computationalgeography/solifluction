@@ -111,7 +111,8 @@ def default_boundary_type(num_cols, num_rows, boundary_in_first_last_row_col=Fal
         boundary_loc_numpy[1:-1, 1] = 1  # second column
         boundary_loc_numpy[1:-1, -2] = 1  # Second-to-last column
 
-        # boundary_type_numpy_default is the default boundary type. It is overwritten only if Dirichlet condition (type = 0) is considered
+        # boundary_type_numpy_default is the default boundary type.
+        # It is overwritten only if Dirichlet condition (type = 0) is considered
 
         boundary_type_numpy_default = create_zero_numpy_array(
             num_cols, num_rows, 0, np.uint8
@@ -133,3 +134,38 @@ def default_boundary_type(num_cols, num_rows, boundary_in_first_last_row_col=Fal
         # boundary_type_numpy_default[:, [0, -1]] = 0
 
     return boundary_type_numpy_default, boundary_loc_numpy
+
+
+def read_run_setup(file_path: str) -> dict:
+    variables: dict = {}
+
+    # Check if file exists
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"Configuration file {file_path} not found.")
+
+    with open(file_path, "r") as file:
+        for line in file:
+            line = line.strip()  # Remove leading/trailing whitespace
+
+            # Ignore empty lines or comments
+            if not line or line.startswith("#"):
+                continue
+
+            # Split the line at '=' and handle assignment
+            if "=" in line:
+                key, value = line.split("=", 1)
+                key = key.strip()  # Remove any extra whitespace around the key
+                value = value.strip()  # Remove extra whitespace around value
+
+                # Handle known types
+                if key == "dt":
+                    variables[key] = float(value)  # Convert dt to float
+                elif key == "u_xfile":
+                    variables[key] = value  # File path remains as string
+                # Add more type checks here if needed
+
+                # Add any default handling for other variables as needed.
+                else:
+                    variables[key] = value  # Store as string by default
+
+    return variables

@@ -20,8 +20,8 @@ from source.boundary_condition import boundary_set
 #     |                                                         |
 #     6---------------------boundary_type=2---------------------7
 
-""" 
-# momentum function is the general form of momentum solver but it has not been tested. 
+"""
+# momentum function is the general form of momentum solver but it has not been tested.
 # It can be considered in the future. momentum_x function works well for now.
 
 def momentum(
@@ -381,5 +381,4 @@ def momentum_ux(
         dz,
     )
 
-    return phi, phi_internal
-    return phi, phi_internal
+    return phi
