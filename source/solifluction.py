@@ -160,8 +160,8 @@ def solifluction_simulate(
 
             for layer_id in range(1, num_layers):
 
-                rhs = g_sin + ((layer_list[layer_id].mu_soil / 
-                                layer_list[layer_id].density_soil) 
+                rhs = g_sin + ((layer_list[layer_id].mu_soil /
+                                layer_list[layer_id].density_soil)
                                 * d2u_x_dy2[layer_id])
 
                 layer_list[layer_id].u_x = momentum_ux(
@@ -382,7 +382,7 @@ def main():
     )
 
     T_bed = zero_array_lue
-    T_surface = 
+    T_surface =
 
     initial_u_x = zero_array_lue
     initial_u_z = zero_array_lue
