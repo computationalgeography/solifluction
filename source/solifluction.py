@@ -8,9 +8,6 @@ import lue.framework as lfr
 import numpy as np
 from osgeo import gdal
 
-from input_output import write
-
-# from source.boundary_condition import boundary_set
 from source.io_data_process import (
     convert_numpy_to_lue,
     create_zero_numpy_array,
@@ -18,6 +15,16 @@ from source.io_data_process import (
     read_run_setup,
 )
 from source.layer import Layer
+from source.vof import h_mesh_assign
+
+from source.derivatives_discretization import second_derivatives_in_y
+from source.heat_transfer import compute_temperature_1D_in_y
+# from source.boundary_condition import boundary_set
+
+from source.momentum import momentum_ux
+
+
+# from input_output import write
 
 
 @lfr.runtime_scope
@@ -27,25 +34,20 @@ def solifluction_simulate(
     num_cols,
     num_rows,
     num_layers,
+    initial_layer_variables,
+    h_total_initial,
+    dt_momentum,
+    dt_heat_transfer,
+    time_end_simulation,
+    heat_transfer_warmup,
+    heat_transfer_warmup_iteration,
+    T_bed,
+    T_surface,
+    d2u_x_dy2_initial,
     dt,
     h_mesh_step_value,
-    T_surf_file,
-    T_initial_file,
-    h_total_file,
-    mu_soil_initial_file,
-    mu_soil_surf_file,
-    U_x_surf_file,
-    U_x_initial_file,
-    gama_soil_surf_file,
-    gama_soil_initial_file,
-    phase_state_surf_file,
-    phase_state_initial_file,
-    thermal_diffusivity_coeff_surf_file,
-    vegetation_vol_fraction_surf_file,
-    vegetation_vol_fraction_initial_file,
     nu_x,
     nu_z,
-    nr_time_steps,
     partition_shape,
     results_pathname,
 ):
@@ -61,53 +63,14 @@ def solifluction_simulate(
     layer_list = []
 
     # Assign bed layer properties
-    layer_list.append(
-        Layer(
-            initial_u_x,
-            initial_u_z,
-            initial_temperature,
-            initial_zero_h_mesh,
-            initial_mu_soil,
-            initial_density_soil,
-            initial_phase_state,
-            initial_k_conductivity_heat,
-            initial_rho_c_heat,
-            initial_vegetation_vol_fraction,
-        )
-    )
+    layer_list.append(initial_layer_variables)
 
     # Assign internal layers properties
     for _ in range(1, num_layers):
-        layer_list.append(
-            Layer(
-                initial_u_x,
-                initial_u_z,
-                initial_temperature,
-                initial_zero_h_mesh,
-                initial_mu_soil,
-                initial_density_soil,
-                initial_phase_state,
-                initial_k_conductivity_heat,
-                initial_rho_c_heat,
-                initial_vegetation_vol_fraction,
-            )
-        )
+        layer_list.append(initial_layer_variables)
 
     # Assign surface layer properties
-    layer_list.append(
-        Layer(
-            initial_u_x,
-            initial_u_z,
-            initial_temperature,
-            initial_zero_h_mesh,
-            initial_mu_soil,
-            initial_density_soil,
-            initial_phase_state,
-            initial_k_conductivity_heat,
-            initial_rho_c_heat,
-            initial_vegetation_vol_fraction,
-        )
-    )
+    layer_list.append(initial_layer_variables)
 
     # ---------------- boundary condition set --------------------------
 
@@ -149,9 +112,43 @@ def solifluction_simulate(
 
     # ---------------- End: boundary condition set --------------------------
 
-    h_mesh_assign(initial_h_total, num_layers, h_mesh_step_value, layer_list)
+    h_mesh_assign(h_total_initial, num_layers, h_mesh_step_value, layer_list)
+
+    if heat_transfer_warmup:
+
+        for _ in range(1, heat_transfer_warmup_iteration):
+
+            layer_list[0].T = T_bed
+            layer_list[num_layers - 1].T = T_surface
+
+            # T_numpy_bed = lfr.to_numpy(layer_list[0].T)
+            # T_numpy_surf = lfr.to_numpy(layer_list[num_layers - 1].T)
+
+            for layer_id in range(1, num_layers - 1):
+                layer_list[layer_id].T = compute_temperature_1D_in_y(
+                    layer_list[layer_id].k_conductivity_heat,
+                    layer_list[layer_id + 1].k_conductivity_heat,
+                    layer_list[layer_id - 1].k_conductivity_heat,
+                    layer_list[layer_id].rho_c_heat,
+                    layer_list[layer_id].T,
+                    layer_list[layer_id + 1].T,
+                    layer_list[layer_id - 1].T,
+                    dt,
+                    layer_list[layer_id].h_mesh,
+                    layer_list[layer_id - 1].h_mesh,
+                    compute_flag,
+                    precomputed_value,
+                )
 
     time = 0
+    local_momentum_time = 0
+    local_mass_conservation_time = 0
+    local_heat_transfer_time = 0
+
+    d2u_x_dy2 = d2u_x_dy2_initial
+
+
+    dt_mass_conservation: float = dt_momentum
 
     dt_min = min(dt_momentum, dt_heat_transfer)
 
@@ -163,15 +160,17 @@ def solifluction_simulate(
 
             for layer_id in range(1, num_layers):
 
-                rhs = g_sin + ((mu_array_lue / density_soil_lue) * d2u_x_dy2[layer_id])
+                rhs = g_sin + ((layer_list[layer_id].mu_soil / 
+                                layer_list[layer_id].density_soil) 
+                                * d2u_x_dy2[layer_id])
 
-                Layer_list[layer_id].u_x = momentum_ux(
-                    Layer_list[layer_id].u_x,
+                layer_list[layer_id].u_x = momentum_ux(
+                    layer_list[layer_id].u_x,
                     phase_state_lue,
                     dx,
                     dz,
                     dt,
-                    Layer_list[layer_id].u_x,
+                    layer_list[layer_id].u_x,
                     zero_array_lue,
                     0.0,
                     0.0,
@@ -234,8 +233,8 @@ def solifluction_simulate(
 
         if local_heat_transfer_time >= dt_heat_transfer:
 
-            Layer_list[0].T = T_bed_lue
-            Layer_list[num_layers - 1].T = T_surface_lue
+            layer_list[0].T = T_bed_lue
+            layer_list[num_layers - 1].T = T_surface_lue
 
             T_result[0] = T_bed_value
             T_result[num_layers - 1] = T_surface_value
@@ -246,17 +245,17 @@ def solifluction_simulate(
             print("T_numpy_surf: \n", T_numpy_surf)
 
             for layer_id in range(1, num_layers - 1):
-                Layer_list[layer_id].T = compute_temperature_1D_in_y(
-                    Layer_list[layer_id].k_conductivity_heat,
-                    Layer_list[layer_id + 1].k_conductivity_heat,
-                    Layer_list[layer_id - 1].k_conductivity_heat,
-                    Layer_list[layer_id].rho_c_heat,
-                    Layer_list[layer_id].T,
-                    Layer_list[layer_id + 1].T,
-                    Layer_list[layer_id - 1].T,
+                layer_list[layer_id].T = compute_temperature_1D_in_y(
+                    layer_list[layer_id].k_conductivity_heat,
+                    layer_list[layer_id + 1].k_conductivity_heat,
+                    layer_list[layer_id - 1].k_conductivity_heat,
+                    layer_list[layer_id].rho_c_heat,
+                    layer_list[layer_id].T,
+                    layer_list[layer_id + 1].T,
+                    layer_list[layer_id - 1].T,
                     dt,
-                    Layer_list[layer_id].h_mesh,
-                    Layer_list[layer_id - 1].h_mesh,
+                    layer_list[layer_id].h_mesh,
+                    layer_list[layer_id - 1].h_mesh,
                     compute_flag,
                     precomputed_value,
                 )
@@ -291,10 +290,25 @@ def main():
     dt_momentum: float = input_variables["time_step_momentum"]
     dt_heat_transfer: float = input_variables["time_step_heat_transfer"]
     dt_mass_conservation: float = input_variables["time_step_mass_conservation"]
+    partition_shape: int = input_variables["partition_shape"]
+    h_mesh_step_value: float = input_variables["initial_layer_size"]
+    mu_value: float = input_variables["uniform_mu"]
+    density_value: float = input_variables["uniform_density"]
+    k_conductivity_value: float = input_variables["uniform_k_conductivity"]
+    rho_c_heat_value: float = input_variables["uniform_rho_c_heat"]
+    h_total_initial_file: str = input_variables["h_total_initial_file"]
+    dt_momentum: float = input_variables["dt_momentum"]
+    dt_heat_transfer: float = input_variables["dt_heat_transfer"]
+    time_end_simulation: float = input_variables["time_end_simulation"]
+
+    heat_transfer_warmup: bool = input_variables.get("heat_transfer_warmup", True)
+    heat_transfer_warmup_iteration: int = input_variables.get(
+        "heat_transfer_warmup_iteration", 200
+    )
 
     # ---------------------  initial information --------------------
 
-    dataset = gdal.Open("h_total.tif")
+    dataset = gdal.Open(h_total_initial_file)
     num_cols = dataset.RasterXSize
     num_rows = dataset.RasterYSize
 
@@ -316,11 +330,88 @@ def main():
     max_h_total = np.max(raster_array)
     print(f"max_h_total: {max_h_total}")
 
+    array_shape = (
+        num_rows,
+        num_cols,
+    )
+    partition_shape = 2 * (partition_shape,)
+
     bed_depth_elevation = 0  # it can be any value
 
     num_layers: int = int(
         np.round(max_h_total - bed_depth_elevation) / h_mesh_step_value + 1
     )
+
+    h_total_initial = lfr.from_gdal(
+        h_total_initial_file, partition_shape=partition_shape
+    )
+
+    zero_array_lue = lfr.create_array(
+        array_shape,
+        dtype=np.float64,
+        fill_value=0.0,
+        partition_shape=partition_shape,
+    )
+
+    mu_array_lue = lfr.create_array(
+        array_shape,
+        dtype=np.float64,
+        fill_value=mu_value,
+        partition_shape=partition_shape,
+    )
+
+    density_array_lue = lfr.create_array(
+        array_shape,
+        dtype=np.float64,
+        fill_value=density_value,
+        partition_shape=partition_shape,
+    )
+
+    k_conductivity_array_lue = lfr.create_array(
+        array_shape,
+        dtype=np.float64,
+        fill_value=k_conductivity_value,
+        partition_shape=partition_shape,
+    )
+
+    rho_c_heat_array_lue = lfr.create_array(
+        array_shape,
+        dtype=np.float64,
+        fill_value=rho_c_heat_value,
+        partition_shape=partition_shape,
+    )
+
+    T_bed = zero_array_lue
+    T_surface = 
+
+    initial_u_x = zero_array_lue
+    initial_u_z = zero_array_lue
+    initial_temperature = zero_array_lue
+    initial_h_mesh = zero_array_lue  # this will be updated by "h_mesh_assign" function
+    initial_mu_soil = mu_array_lue
+    initial_density_soil = density_array_lue
+    initial_phase_state = zero_array_lue
+    initial_k_conductivity_heat = k_conductivity_array_lue
+    initial_rho_c_heat = rho_c_heat_array_lue
+    initial_vegetation_vol_fraction = zero_array_lue
+
+    initial_layer_variables: Layer = Layer(
+        initial_u_x,
+        initial_u_z,
+        initial_temperature,
+        initial_h_mesh,
+        initial_mu_soil,
+        initial_density_soil,
+        initial_phase_state,
+        initial_k_conductivity_heat,
+        initial_rho_c_heat,
+        initial_vegetation_vol_fraction,
+    )
+
+    d2u_x_dy2_initial = []
+
+    for _ in range(num_layers):
+        d2u_x_dy2_initial.append(zero_array_lue)
 
     # ---------------------  initial information --------------------
 
@@ -330,6 +421,16 @@ def main():
         num_cols,
         num_rows,
         num_layers,
+        initial_layer_variables,
+        h_total_initial,
+        dt_momentum,
+        dt_heat_transfer,
+        time_end_simulation,
+        heat_transfer_warmup,
+        heat_transfer_warmup_iteration,
+        T_bed,
+        T_surface,
+        d2u_x_dy2_initial,
         dt,
         T_surf_file,
         T_initial_file,
