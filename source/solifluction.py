@@ -2,12 +2,15 @@
 import os
 import os.path
 import sys
+from typing import Any
 
 import docopt
 import lue.framework as lfr
 import numpy as np
 from osgeo import gdal
 
+from source.derivatives_discretization import second_derivatives_in_y
+from source.heat_transfer import compute_temperature_1D_in_y
 from source.io_data_process import (
     convert_numpy_to_lue,
     create_zero_numpy_array,
@@ -15,52 +18,48 @@ from source.io_data_process import (
     read_run_setup,
 )
 from source.layer import Layer
+from source.momentum import momentum_ux
 from source.vof import h_mesh_assign
 
-from source.derivatives_discretization import second_derivatives_in_y
-from source.heat_transfer import compute_temperature_1D_in_y
 # from source.boundary_condition import boundary_set
-
-from source.momentum import momentum_ux
 
 
 # from input_output import write
 
 
-@lfr.runtime_scope
+@lfr.runtime_scope  # type: ignore[misc]
 def solifluction_simulate(
-    dx,
-    dz,
-    num_cols,
-    num_rows,
-    num_layers,
-    initial_layer_variables,
-    h_total_initial,
-    dt_momentum,
-    dt_heat_transfer,
-    time_end_simulation,
-    heat_transfer_warmup,
-    heat_transfer_warmup_iteration,
-    T_bed,
-    T_surface,
-    d2u_x_dy2_initial,
-    dt,
-    h_mesh_step_value,
-    nu_x,
-    nu_z,
-    partition_shape,
-    results_pathname,
-):
+    dx: float,
+    dz: float,
+    num_cols: int,
+    num_rows: int,
+    num_layers: int,
+    initial_layer_variables: Layer,
+    h_total_initial: Any,
+    dt_momentum: float,
+    dt_heat_transfer: float,
+    time_end_simulation: float,
+    heat_transfer_warmup: bool,
+    heat_transfer_warmup_iteration: int,
+    T_bed: Any,
+    T_surface: Any,
+    d2u_x_dy2_initial: Any,
+    h_mesh_step_value: float,
+    nu_x: float,
+    nu_z: float,
+    partition_shape: tuple[int, int],
+    results_pathname: str,
+) -> None:
 
-    array_shape = (num_rows, num_cols)
-    zero_lue = lfr.create_array(
+    array_shape: tuple[int, int] = (num_rows, num_cols)
+    zero_lue: Any = lfr.create_array(
         array_shape,
         dtype=np.float64,
         fill_value=0.0,
         partition_shape=partition_shape,
     )
 
-    layer_list = []
+    layer_list: list[Layer] = []
 
     # Assign bed layer properties
     layer_list.append(initial_layer_variables)
@@ -133,7 +132,7 @@ def solifluction_simulate(
                     layer_list[layer_id].T,
                     layer_list[layer_id + 1].T,
                     layer_list[layer_id - 1].T,
-                    dt,
+                    dt_heat_transfer,
                     layer_list[layer_id].h_mesh,
                     layer_list[layer_id - 1].h_mesh,
                     compute_flag,
@@ -147,7 +146,6 @@ def solifluction_simulate(
 
     d2u_x_dy2 = d2u_x_dy2_initial
 
-
     dt_mass_conservation: float = dt_momentum
 
     dt_min = min(dt_momentum, dt_heat_transfer)
@@ -160,9 +158,10 @@ def solifluction_simulate(
 
             for layer_id in range(1, num_layers):
 
-                rhs = g_sin + ((layer_list[layer_id].mu_soil /
-                                layer_list[layer_id].density_soil)
-                                * d2u_x_dy2[layer_id])
+                rhs = g_sin + (
+                    (layer_list[layer_id].mu_soil / layer_list[layer_id].density_soil)
+                    * d2u_x_dy2[layer_id]
+                )
 
                 layer_list[layer_id].u_x = momentum_ux(
                     layer_list[layer_id].u_x,
@@ -290,7 +289,7 @@ def main():
     dt_momentum: float = input_variables["time_step_momentum"]
     dt_heat_transfer: float = input_variables["time_step_heat_transfer"]
     dt_mass_conservation: float = input_variables["time_step_mass_conservation"]
-    partition_shape: int = input_variables["partition_shape"]
+    partition_shape_size: int = input_variables["partition_shape_size"]
     h_mesh_step_value: float = input_variables["initial_layer_size"]
     mu_value: float = input_variables["uniform_mu"]
     density_value: float = input_variables["uniform_density"]
@@ -301,7 +300,7 @@ def main():
     dt_heat_transfer: float = input_variables["dt_heat_transfer"]
     time_end_simulation: float = input_variables["time_end_simulation"]
 
-    heat_transfer_warmup: bool = input_variables.get("heat_transfer_warmup", True)
+    heat_transfer_warmup: bool = input_variables.get("heat_transfer_warmup", False)
     heat_transfer_warmup_iteration: int = input_variables.get(
         "heat_transfer_warmup_iteration", 200
     )
@@ -334,7 +333,7 @@ def main():
         num_rows,
         num_cols,
     )
-    partition_shape = 2 * (partition_shape,)
+    partition_shape: tuple[int, int] = 2 * (partition_shape_size,)
 
     bed_depth_elevation = 0  # it can be any value
 
@@ -382,7 +381,7 @@ def main():
     )
 
     T_bed = zero_array_lue
-    T_surface =
+    # T_surface =
 
     initial_u_x = zero_array_lue
     initial_u_z = zero_array_lue
