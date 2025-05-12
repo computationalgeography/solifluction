@@ -33,7 +33,7 @@ on:
 #       - name: Create Conda environment and install lue
 #         run: |
 #           conda create --name lue python=3.10
-#           conda activate lue  
+#           conda activate lue
 #           conda install -c conda-forge lue
 #           echo "Installation complete!"
 #           export LD_PRELOAD=$(find $CONDA_PREFIX -name libtcmalloc_minimal.so.4)
@@ -76,5 +76,6 @@ jobs:
         run: |
           conda activate lue
           export LD_PRELOAD=$(find $CONDA_PREFIX -name libtcmalloc_minimal.so.4)
-          python -m unittest -v test.model_test.TestPackage.test_second_derivatives_in_y
-          python -m unittest -v test.model_test.TestPackage.test_boundary_set
+          # python -m unittest -v test.model_test.TestPackage.test_second_derivatives_in_y
+          # python -m unittest -v test.model_test.TestPackage.test_boundary_set
+          python -m unittest test.model_test -v

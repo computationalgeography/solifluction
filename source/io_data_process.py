@@ -2,17 +2,21 @@
 
 import os
 import os.path
+from typing import Any
 
 import lue.framework as lfr
 import numpy as np
+from numpy.typing import NDArray
+
+# from typing import Type
 
 
 def create_zero_numpy_array(
-    num_grid_col,
-    num_grid_row,
+    num_grid_col: int,
+    num_grid_row: int,
     num_virtual_layer: int = 1,
     dtype: np.dtype = np.float64,  # Default dtype set to float64
-):
+) -> NDArray[np.float64]:
 
     # num_grid_col : x direction
     # num_grid_row: z direction
@@ -21,15 +25,19 @@ def create_zero_numpy_array(
     num_grid_col = num_grid_col + int(2 * num_virtual_layer)
     num_grid_row = num_grid_row + int(2 * num_virtual_layer)
 
-    array_numpy = np.zeros((num_grid_row, num_grid_col), dtype=dtype)
+    array_numpy: NDArray[np.float64] = np.zeros(
+        (num_grid_row, num_grid_col), dtype=dtype
+    )
 
     print("---- create_zero_numpy_array is done ---------")
 
     return array_numpy
 
 
-def convert_numpy_to_lue(numpy_array, partition_shape):
-    lue_array = lfr.from_numpy(numpy_array, partition_shape=partition_shape)
+def convert_numpy_to_lue(
+    numpy_array: NDArray[Any], partition_shape: tuple[int, int]
+) -> Any:
+    lue_array: Any = lfr.from_numpy(numpy_array, partition_shape=partition_shape)
 
     print("---- convert_numpy_to_lue is done ---------")
 
@@ -58,12 +66,16 @@ def write(lue_array, write_pathname_directory, file_name, iteration):
     written.wait()
 
 
-def default_boundary_type(num_cols, num_rows, boundary_in_first_last_row_col=False):
+def default_boundary_type(
+    num_cols: int, num_rows: int, boundary_in_first_last_row_col: bool = False
+) -> tuple[NDArray[np.uint8], NDArray[np.uint8]]:
     # boundary_in_first_last_row_col if the first and last rows and
     # columns are considered as boundaries this switch to True
 
-    boundary_loc_numpy = create_zero_numpy_array(num_cols, num_rows, 0, np.uint8)
-    boundary_type_numpy_default = create_zero_numpy_array(
+    boundary_loc_numpy: NDArray[np.uint8] = create_zero_numpy_array(
+        num_cols, num_rows, 0, np.uint8
+    )
+    boundary_type_numpy_default: NDArray[np.uint8] = create_zero_numpy_array(
         num_cols, num_rows, 0, np.uint8
     )
 

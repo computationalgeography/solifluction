@@ -1,5 +1,8 @@
+from typing import Any
+
 import lue.framework as lfr
 import numpy as np
+from numpy.typing import NDArray
 
 import source.derivatives_discretization as fdm
 from source.boundary_condition import boundary_set
@@ -209,22 +212,22 @@ def momentum(
 
 
 def momentum_ux(
-    phi,
-    phase_state,
+    phi: Any,
+    phase_state: Any,
     dx: float,
     dz: float,
     dt: float,
-    lue_u_x,
-    lue_u_z,
+    lue_u_x: Any,
+    lue_u_z: Any,
     nu_x: float,
     nu_z: float,
-    rhs,
-    h_mesh,
-    boundary_loc,
-    boundary_type,
-    Dirichlet_boundary_value,
-    Neumann_boundary_value,
-):
+    rhs: Any,
+    h_mesh: Any,
+    boundary_loc: Any,
+    boundary_type: Any,
+    Dirichlet_boundary_value: Any,  # noqa: N803
+    Neumann_boundary_value: Any,  # noqa: N803
+) -> Any:
 
     # lue_u_x : phi
     # lue_u_y : 0
@@ -243,7 +246,7 @@ def momentum_ux(
     # )
 
     # kernel_im1_j   i-1, j
-    kernel_im1_j = np.array(
+    kernel_im1_j: NDArray[np.uint8] = np.array(
         [
             [0, 0, 0],
             [1, 0, 0],
@@ -265,7 +268,7 @@ def momentum_ux(
     """
 
     # kernel_i_jm1   i, j-1
-    kernel_i_jm1 = np.array(
+    kernel_i_jm1: NDArray[np.uint8] = np.array(
         [
             [0, 1, 0],
             [0, 0, 0],
@@ -275,7 +278,7 @@ def momentum_ux(
     )
 
     # kernel_ip1_j   i+1, j
-    kernel_ip1_j = np.array(
+    kernel_ip1_j: NDArray[np.uint8] = np.array(
         [
             [0, 0, 0],
             [0, 0, 1],
@@ -297,7 +300,7 @@ def momentum_ux(
     """
 
     # kernel_i_jp1   i, j+1
-    kernel_i_jp1 = np.array(
+    kernel_i_jp1: NDArray[np.uint8] = np.array(
         [
             [0, 0, 0],
             [0, 0, 0],
@@ -314,7 +317,7 @@ def momentum_ux(
     #     + (2 * (dt / (dy**2)) * nu_y)
     # )
 
-    coeff_map_i_j = (
+    coeff_map_i_j: Any = (
         1  # check this
         + (-(dt / dx) * lfr.abs(lue_u_x))
         + (-(dt / dz) * lfr.abs(lue_u_z))
@@ -322,25 +325,25 @@ def momentum_ux(
         + (2 * (dt / (dz**2)) * nu_z)
     )
 
-    coeff_map_im1_j = lfr.where(
+    coeff_map_im1_j: Any = lfr.where(
         lue_u_x >= 0,
         ((dt / dx) * lfr.abs(lue_u_x)) + (-(dt / (dx**2)) * nu_x),
         (-(dt / (dx**2)) * nu_x),
     )
 
-    coeff_map_ip1_j = lfr.where(
+    coeff_map_ip1_j: Any = lfr.where(
         lue_u_x < 0,
         ((dt / dx) * lfr.abs(lue_u_x)) + (-(dt / (dx**2)) * nu_x),
         (-(dt / (dx**2)) * nu_x),
     )
 
-    coeff_map_i_jm1 = lfr.where(
+    coeff_map_i_jm1: Any = lfr.where(
         lue_u_z >= 0,
         ((dt / dz) * lfr.abs(lue_u_z)) + (-(dt / (dz**2)) * nu_z),
         (-(dt / (dz**2)) * nu_z),
     )
 
-    coeff_map_i_jp1 = lfr.where(
+    coeff_map_i_jp1: Any = lfr.where(
         lue_u_z < 0,
         ((dt / dz) * lfr.abs(lue_u_z)) + (-(dt / (dz**2)) * nu_z),
         (-(dt / (dz**2)) * nu_z),
@@ -353,7 +356,7 @@ def momentum_ux(
     # on the boundaries which overwrite phi on the boundaries but in the future
     # this should be considered and for each boundary use exclusive discretization
 
-    phi_all_internal_domain_i_j = (
+    phi_all_internal_domain_i_j: Any = (
         (coeff_map_i_j * phi)  # (coeff_map_i_j * lfr.focal_sum(solution, kernel_i_j))
         + (coeff_map_im1_j * lfr.focal_sum(phi, kernel_im1_j))
         + (coeff_map_i_jm1 * lfr.focal_sum(phi, kernel_i_jm1))
@@ -365,7 +368,7 @@ def momentum_ux(
     # phase_state: 0 solid  --> (frozen soil), 1 --> (fluid or unfrozen), now vegetation
     # is ignored in phase_state but it is considered in vegetation_vol_fraction
 
-    phi_internal = lfr.where(
+    phi_internal: Any = lfr.where(
         (phase_state != 0) & (h_mesh > 0),  # fluid or unfrozen
         phi_all_internal_domain_i_j,
         0,

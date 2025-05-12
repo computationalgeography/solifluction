@@ -2,19 +2,22 @@
 # based on their type: Dirichlet and Neumann boundaries.
 # For Neumann boundaries, only the values normal to the boundary are implemented
 
+from typing import Any
+
 import lue.framework as lfr
 import numpy as np
+from numpy.typing import NDArray
 
 
 def boundary_set(
-    phi,
-    boundary_loc,
-    boundary_type,
-    Dirichlet_boundary_value,
-    Neumann_boundary_value,
-    dx,
-    dz,
-):
+    phi: Any,
+    boundary_loc: Any,
+    boundary_type: Any,
+    Dirichlet_boundary_value: Any,
+    Neumann_boundary_value: Any,
+    dx: float,
+    dz: float,
+) -> Any:
 
     # NOTE: boundary_type = (0 for Dirichlet and 1,2,3,4,5,6,7,8 for Neumann)
     #       boundary_type is also used to adjust PDE discretization on the boundaries
@@ -46,7 +49,7 @@ def boundary_set(
     )
 
     # kernel_im1_j   i-1, j
-    kernel_im1_j = np.array(
+    kernel_im1_j: NDArray[np.uint8] = np.array(
         [
             [0, 0, 0],
             [1, 0, 0],
@@ -56,7 +59,7 @@ def boundary_set(
     )
 
     # kernel_i_jm1   i, j-1    # Check it. It is changed compared to advection-diffusion  test model.
-    kernel_i_jm1 = np.array(
+    kernel_i_jm1: NDArray[np.uint8] = np.array(
         [
             [0, 0, 0],
             [0, 0, 0],
@@ -66,7 +69,7 @@ def boundary_set(
     )
 
     # kernel_ip1_j   i+1, j
-    kernel_ip1_j = np.array(
+    kernel_ip1_j: NDArray[np.uint8] = np.array(
         [
             [0, 0, 0],
             [0, 0, 1],
@@ -76,7 +79,7 @@ def boundary_set(
     )
 
     # kernel_i_jp1   i, j+1     # Check it. It is changed compared to advection-diffusion  test model.
-    kernel_i_jp1 = np.array(
+    kernel_i_jp1: NDArray[np.uint8] = np.array(
         [
             [0, 1, 0],
             [0, 0, 0],

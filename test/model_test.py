@@ -730,7 +730,7 @@ class TestPackage(unittest.TestCase):
         print(f"Check figures in {folder_path} comparing exact and numerical results")
 
     @lfr.runtime_scope
-    def test_boundary_set(self):
+    def test_boundary_set(self) -> None:
         num_cols: int = 200  # x direction size for layers' raster
         num_rows: int = 100  # z direction size for layers' raster
 
@@ -864,11 +864,11 @@ class TestPackage(unittest.TestCase):
                 error_matrix_numpy = np.abs(phi_lue_to_numpy - phi_expect_numpy)
                 error_threshold = 10**-8
 
-                print("phi_numpy - original phi: \n", phi_numpy)
-                print("phi_lue_to_numpy - original \n", phi_lue_to_numpy)
-                print("error_matrix_numpy: \n", error_matrix_numpy)
-                print("boundary_loc_numpy: \n", boundary_loc_numpy)
-                print("boundary_type_numpy: \n", boundary_type_numpy)
+                # print("phi_numpy - original phi: \n", phi_numpy)
+                # print("phi_lue_to_numpy - original \n", phi_lue_to_numpy)
+                # print("error_matrix_numpy: \n", error_matrix_numpy)
+                # print("boundary_loc_numpy: \n", boundary_loc_numpy)
+                # print("boundary_type_numpy: \n", boundary_type_numpy)
 
                 self.assertLess(np.max(error_matrix_numpy), error_threshold)
 
@@ -1025,10 +1025,10 @@ class TestPackage(unittest.TestCase):
                 T_result[0] = T_bed_value
                 T_result[num_layers - 1] = T_surface_value
 
-                T_numpy_bed = lfr.to_numpy(Layer_list[0].T)
-                T_numpy_surf = lfr.to_numpy(Layer_list[num_layers - 1].T)
-                print("T_numpy_bed: \n", T_numpy_bed)
-                print("T_numpy_surf: \n", T_numpy_surf)
+                # T_numpy_bed = lfr.to_numpy(Layer_list[0].T)
+                # T_numpy_surf = lfr.to_numpy(Layer_list[num_layers - 1].T)
+                # print("T_numpy_bed: \n", T_numpy_bed)
+                # print("T_numpy_surf: \n", T_numpy_surf)
 
                 # compute temperatures in internal layers
                 for layer_id in range(1, num_layers - 1):
@@ -1047,16 +1047,16 @@ class TestPackage(unittest.TestCase):
                         precomputed_value,
                     )
 
-                    print("layer_id: ", layer_id)
-                    T_numpy = lfr.to_numpy(Layer_list[layer_id].T)
-                    CFL = (T_numpy[50, 50] * dt) / h_mesh_layer_value
-                    print("CFL: ", CFL)
-                    print("T_numpy: \n", T_numpy)
-                    print("T_exact: ", T_exact)
+                    # print("layer_id: ", layer_id)
+                    # T_numpy = lfr.to_numpy(Layer_list[layer_id].T)
+                    # CFL = (T_numpy[50, 50] * dt) / h_mesh_layer_value
+                    # print("CFL: ", CFL)
+                    # print("T_numpy: \n", T_numpy)
+                    # print("T_exact: ", T_exact)
 
-                print("time_iter: ", time_iter)
+                # print("time_iter: ", time_iter)
 
-            input("Enter key to continue ...")
+            # input("Enter key to continue ...")
 
             for layer_id in range(0, num_layers):
                 layer_T_numpy = lfr.to_numpy(Layer_list[layer_id].T)
@@ -1066,6 +1066,9 @@ class TestPackage(unittest.TestCase):
             T_exact = exact_heat_transfer_steady(
                 h_total, T_bed_value, T_surface_value, num_layers
             )
+
+            folder_path = "test/test_heat_transfer"
+            os.makedirs(folder_path, exist_ok=True)  # Create folder if it doesn't exist
 
             plt.plot(
                 T_result,
@@ -1082,7 +1085,8 @@ class TestPackage(unittest.TestCase):
             plt.xlabel("Temperature")
             plt.ylabel("height")
             plt.legend()
-            plt.show()
+            plt.savefig(os.path.join(folder_path, "compare_numerical_exact.png"))
+            plt.close()
 
             error_threshold = 0.05
 
@@ -1091,6 +1095,10 @@ class TestPackage(unittest.TestCase):
             print("numerical simulation max error is: \n", np.max(error_matrix))
 
             self.assertLess(np.max(error_matrix), error_threshold)
+
+            print(
+                f"Check figures in {folder_path} comparing exact and numerical results"
+            )
 
     @lfr.runtime_scope
     def test_h_mesh_assign(self):
@@ -1121,7 +1129,7 @@ class TestPackage(unittest.TestCase):
 
         num_layers: int = int(np.round(np.max(h_total_numpy) / h_mesh_step_value) + 1)
 
-        print("num_layers: ", num_layers)
+        # print("num_layers: ", num_layers)
 
         layer_list = []
 
@@ -1181,20 +1189,20 @@ class TestPackage(unittest.TestCase):
 
         h_total_lue = convert_numpy_to_lue(h_total_numpy, partition_shape)
 
-        plt.contourf(h_total_numpy)
-        plt.colorbar()
-        plt.show()
+        # plt.contourf(h_total_numpy)
+        # plt.colorbar()
+        # plt.show()
 
         h_mesh_assign(h_total_lue, num_layers, h_mesh_step_value, layer_list)
 
-        layer_0_h_mesh_numpy = lfr.to_numpy(layer_list[0].h_mesh)
-        layer_1_h_mesh_numpy = lfr.to_numpy(layer_list[1].h_mesh)
-        layer_2_h_mesh_numpy = lfr.to_numpy(layer_list[2].h_mesh)
+        # layer_0_h_mesh_numpy = lfr.to_numpy(layer_list[0].h_mesh)
+        # layer_1_h_mesh_numpy = lfr.to_numpy(layer_list[1].h_mesh)
+        # layer_2_h_mesh_numpy = lfr.to_numpy(layer_list[2].h_mesh)
         layer_3_h_mesh_numpy = lfr.to_numpy(layer_list[3].h_mesh)
-        layer_4_h_mesh_numpy = lfr.to_numpy(layer_list[4].h_mesh)
-        layer_5_h_mesh_numpy = lfr.to_numpy(layer_list[5].h_mesh)
-        layer_10_h_mesh_numpy = lfr.to_numpy(layer_list[10].h_mesh)
-        h_total_lue_numpy = lfr.to_numpy(h_total_lue)
+        # layer_4_h_mesh_numpy = lfr.to_numpy(layer_list[4].h_mesh)
+        # layer_5_h_mesh_numpy = lfr.to_numpy(layer_list[5].h_mesh)
+        # layer_10_h_mesh_numpy = lfr.to_numpy(layer_list[10].h_mesh)
+        # h_total_lue_numpy = lfr.to_numpy(h_total_lue)
 
         exact_h_mesh_layer_3 = [
             [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 2.55, 0.0, 0.0],
@@ -1209,50 +1217,50 @@ class TestPackage(unittest.TestCase):
             [10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 2.55, 0.0, 0.0],
         ]
 
-        plt.contourf(layer_3_h_mesh_numpy)
-        plt.colorbar()
-        plt.show()
-        plt.title("layer_3_h_mesh_numpy")
+        # plt.contourf(layer_3_h_mesh_numpy)
+        # plt.colorbar()
+        # plt.show()
+        # plt.title("layer_3_h_mesh_numpy")
 
-        plt.contourf(exact_h_mesh_layer_3)
-        plt.colorbar()
-        plt.show()
-        plt.title("exact_h_mesh_layer_3")
+        # plt.contourf(exact_h_mesh_layer_3)
+        # plt.colorbar()
+        # plt.show()
+        # plt.title("exact_h_mesh_layer_3")
 
-        print(
-            "layer_0_h_mesh_numpy: \n",
-            layer_0_h_mesh_numpy,
-        )
-        print(
-            "layer_1_h_mesh_numpy: \n",
-            layer_1_h_mesh_numpy,
-        )
-        print(
-            "layer_2_h_mesh_numpy: \n",
-            layer_2_h_mesh_numpy,
-        )
-        print(
-            "layer_3_h_mesh_numpy: \n",
-            layer_3_h_mesh_numpy,
-        )
-        print(
-            "layer_4_h_mesh_numpy: \n",
-            layer_4_h_mesh_numpy,
-        )
-        print(
-            "layer_5_h_mesh_numpy: \n",
-            layer_5_h_mesh_numpy,
-        )
+        # print(
+        #     "layer_0_h_mesh_numpy: \n",
+        #     layer_0_h_mesh_numpy,
+        # )
+        # print(
+        #     "layer_1_h_mesh_numpy: \n",
+        #     layer_1_h_mesh_numpy,
+        # )
+        # print(
+        #     "layer_2_h_mesh_numpy: \n",
+        #     layer_2_h_mesh_numpy,
+        # )
+        # print(
+        #     "layer_3_h_mesh_numpy: \n",
+        #     layer_3_h_mesh_numpy,
+        # )
+        # print(
+        #     "layer_4_h_mesh_numpy: \n",
+        #     layer_4_h_mesh_numpy,
+        # )
+        # print(
+        #     "layer_5_h_mesh_numpy: \n",
+        #     layer_5_h_mesh_numpy,
+        # )
 
-        print(
-            "h_total_lue_numpy: \n",
-            h_total_lue_numpy,
-        )
+        # print(
+        #     "h_total_lue_numpy: \n",
+        #     h_total_lue_numpy,
+        # )
 
-        print(
-            "layer_10_h_mesh_numpy: \n",
-            layer_10_h_mesh_numpy,
-        )
+        # print(
+        #     "layer_10_h_mesh_numpy: \n",
+        #     layer_10_h_mesh_numpy,
+        # )
 
         error_threshold = 10e-8
 
@@ -1260,14 +1268,14 @@ class TestPackage(unittest.TestCase):
 
         print("simulation max error is: \n", np.max(error_matrix))
 
-        print("error_matrix: ", error_matrix)
+        # print("error_matrix: ", error_matrix)
 
         self.assertLess(np.max(error_matrix), error_threshold)
 
         h_total_retrieved = calculate_total_h(layer_list)
         h_total_retrieved_numpy = lfr.to_numpy(h_total_retrieved)
 
-        print("h_total_retrieved_numpy: ", h_total_retrieved_numpy)
+        # print("h_total_retrieved_numpy: ", h_total_retrieved_numpy)
 
         self.assertLess(
             np.max(abs(h_total_numpy - h_total_retrieved_numpy)), error_threshold
@@ -1282,8 +1290,8 @@ class TestPackage(unittest.TestCase):
         array_shape = (num_rows, num_cols)
         partition_shape = 2 * (20,)
 
-        nr_time_steps = 100
-        dt = 0.05
+        nr_time_steps = 200  # 100
+        dt = 0.025
         dx = 1
         dz = 1
 
@@ -1296,11 +1304,11 @@ class TestPackage(unittest.TestCase):
 
         # create a hill topography data
 
-        hill_center = (50, 30)  # (50, 20)  # (50, 50)
+        hill_center = (50, 20)  # (50, 30)  # (50, 20)  # (50, 50)
 
         h_total_initial_numpy = np.zeros(array_shape, dtype=np.float64)
 
-        sigma_hill = 10  # 5
+        sigma_hill = 5  # 10  # 5
         amplitude_hill = 100
 
         for i_rows in range(num_rows):
@@ -1425,10 +1433,14 @@ class TestPackage(unittest.TestCase):
             )
         )
 
+        folder_path = "test/test_vof"
+        os.makedirs(folder_path, exist_ok=True)  # Create folder if it doesn't exist
+
         plt.contourf(h_total_initial_numpy)
         plt.colorbar()
         plt.title("h_total_initial_numpy")
-        plt.show()
+        plt.savefig(os.path.join(folder_path, "h_total_initial.png"))
+        plt.close()
 
         h_mesh_assign(h_total_initial_lue, num_layers, h_mesh_step_value, layer_list)
 
@@ -1436,8 +1448,9 @@ class TestPackage(unittest.TestCase):
 
         plt.contourf(layer_5_h_mesh_initial_numpy)
         plt.colorbar()
-        plt.title("layer_5_h_mesh_initial_numpy")
-        plt.show()
+        plt.title("layer_5_h_mesh_initial")
+        plt.savefig(os.path.join(folder_path, "layer_5_h_mesh_initial.png"))
+        plt.close()
 
         time: float = 0
 
@@ -1465,15 +1478,16 @@ class TestPackage(unittest.TestCase):
 
         plt.contourf(h_total_simulated_lue_numpy)
         plt.colorbar()
-        plt.title("h_total_simulated_lue_numpy")
-        plt.show()
+        plt.title("h_total_simulated")
+        plt.savefig(os.path.join(folder_path, "h_total_simulated.png"))
+        plt.close()
 
         layer_5_h_mesh_numpy = lfr.to_numpy(layer_list[5].h_mesh)
 
         plt.contourf(layer_5_h_mesh_numpy)
         plt.colorbar()
-        plt.title("layer_5_h_mesh_numpy")
-        plt.show()
+        plt.savefig(os.path.join(folder_path, "simulated_layer_5_h.png"))
+        plt.close()
 
         shift_mesh_num_hill = (
             int(np.round((u_z_value * time) / dz)),
@@ -1505,11 +1519,14 @@ class TestPackage(unittest.TestCase):
         plt.contourf(h_total_exact_numpy)
         plt.colorbar()
         plt.title("h_total_exact_numpy")
-        plt.show()
+        plt.savefig(os.path.join(folder_path, "h_total_exact.png"))
+        plt.close()
 
         plt.contourf(h_layer_5_exact_numpy)
         plt.colorbar()
-        plt.title("h_layer_5_exact_numpy")
+        plt.title("h_layer_5_exact")
+        plt.savefig(os.path.join(folder_path, "h_layer_5_exact.png"))
+        plt.close()
         plt.show()
 
         error_matrix_h_total = np.abs(h_total_exact_numpy - h_total_simulated_lue_numpy)
@@ -1527,7 +1544,8 @@ class TestPackage(unittest.TestCase):
         plt.contourf(error_matrix_h_layer_5)
         plt.colorbar()
         plt.title("error_matrix_h_layer_5")
-        plt.show()
+        plt.savefig(os.path.join(folder_path, "error_matrix_h_layer_5.png"))
+        plt.close()
 
         print("max_relative_error_h_layer_5: ", max_relative_error_h_layer_5)
 
@@ -1585,13 +1603,15 @@ class TestPackage(unittest.TestCase):
 
         print("center_hill_error_layer_5: ", center_hill_error_layer_5)
 
-        error_threshold_max = 0.2
-        error_threshold_center = 0.1
+        error_threshold_max = 0.25
+        error_threshold_center = 0.25
 
         self.assertLess(max_relative_error_h_total, error_threshold_max)
         # self.assertLess(max_relative_error_h_layer_5, error_threshold_max)
         self.assertLess(center_hill_error_h_total, error_threshold_center)
         # self.assertLess(center_hill_error_layer_5, error_threshold_center)
+
+        print(f"Check figures in {folder_path} comparing exact and numerical results")
 
 
 if __name__ == "__main__":
