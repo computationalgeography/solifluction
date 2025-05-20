@@ -1,25 +1,29 @@
 #!/usr/bin/env python
-import os
-import os.path
-import sys
-from typing import Any
+# import os
+# import os.path
+# import sys
+from typing import TYPE_CHECKING, Any
 
-import docopt
+# import docopt
 import lue.framework as lfr
 import numpy as np
 from osgeo import gdal
 
+from source.config import load_config
 from source.derivatives_discretization import second_derivatives_in_y
 from source.heat_transfer import compute_temperature_1D_in_y
 from source.io_data_process import (
     convert_numpy_to_lue,
     create_zero_numpy_array,
     default_boundary_type,
-    read_run_setup,
 )
 from source.layer import Layer
 from source.momentum import momentum_ux
-from source.vof import h_mesh_assign
+from source.phase_detect import phase_detect_from_temperature
+from source.vof import h_mesh_assign, mass_conservation_2D_vof
+
+if TYPE_CHECKING:
+    from configparser import ConfigParser
 
 # from source.boundary_condition import boundary_set
 
@@ -41,10 +45,11 @@ def solifluction_simulate(
     time_end_simulation: float,
     heat_transfer_warmup: bool,
     heat_transfer_warmup_iteration: int,
-    T_bed: Any,
-    T_surface: Any,
+    temperature_bed: Any,
+    temperature_surface_initial: Any,
     d2u_x_dy2_initial: Any,
     h_mesh_step_value: float,
+    g_sin: float,
     nu_x: float,
     nu_z: float,
     partition_shape: tuple[int, int],
@@ -74,7 +79,7 @@ def solifluction_simulate(
     # ---------------- boundary condition set --------------------------
 
     # Currently, homogeneous Neumann boundary conditions (∂(.)/∂n = 0) are applied to
-    # both u and h.
+    # both u and h. (It is the default boundary condition)
     # This corresponds to assuming zero normal gradients at the boundaries
     # (e.g., fully developed flow at the outlet).
     # These conditions can be modified if necessary.
@@ -90,7 +95,8 @@ def solifluction_simulate(
         num_cols, num_rows, 0, np.float64
     )
 
-    Dirichlet_boundary_value_numpy[[0, -1], :] = 0  # -999
+    Dirichlet_boundary_value_numpy[[0, -1], :] = 0  # -999    # These are virtual layers
+    # NOT boundaries (boundaries are imposed on layer inner)
     Dirichlet_boundary_value_numpy[:, [0, -1]] = 0  # -999
 
     boundary_loc = convert_numpy_to_lue(
@@ -117,11 +123,8 @@ def solifluction_simulate(
 
         for _ in range(1, heat_transfer_warmup_iteration):
 
-            layer_list[0].T = T_bed
-            layer_list[num_layers - 1].T = T_surface
-
-            # T_numpy_bed = lfr.to_numpy(layer_list[0].T)
-            # T_numpy_surf = lfr.to_numpy(layer_list[num_layers - 1].T)
+            layer_list[0].T = temperature_bed
+            layer_list[num_layers - 1].T = temperature_surface_initial
 
             for layer_id in range(1, num_layers - 1):
                 layer_list[layer_id].T = compute_temperature_1D_in_y(
@@ -139,16 +142,16 @@ def solifluction_simulate(
                     precomputed_value,
                 )
 
-    time = 0
-    local_momentum_time = 0
-    local_mass_conservation_time = 0
-    local_heat_transfer_time = 0
+    time: float = 0
+    local_momentum_time: float = 0
+    local_mass_conservation_time: float = 0
+    local_heat_transfer_time: float = 0
 
     d2u_x_dy2 = d2u_x_dy2_initial
 
     dt_mass_conservation: float = dt_momentum
 
-    dt_min = min(dt_momentum, dt_heat_transfer)
+    dt_min: float = min(dt_momentum, dt_heat_transfer)
 
     while time < time_end_simulation:
 
@@ -163,50 +166,52 @@ def solifluction_simulate(
                     * d2u_x_dy2[layer_id]
                 )
 
+                phase_state = phase_detect_from_temperature(layer_list[layer_id].T)
+
                 layer_list[layer_id].u_x = momentum_ux(
                     layer_list[layer_id].u_x,
-                    phase_state_lue,
+                    phase_state,
                     dx,
                     dz,
-                    dt,
+                    dt_momentum,
                     layer_list[layer_id].u_x,
-                    zero_array_lue,
-                    0.0,
-                    0.0,
+                    layer_list[layer_id].u_z,
+                    nu_x,
+                    nu_z,
                     rhs,
-                    h_mesh,
+                    layer_list[layer_id].h_mesh,
                     boundary_loc,
                     boundary_type,
-                    Dirichlet_boundary_value_lue,
-                    Neumann_boundary_value_lue,
+                    Dirichlet_boundary_value,
+                    Neumann_boundary_value,
                 )
 
             for layer_id in range(0, num_layers):
                 if layer_id == 0:  # bed layer
                     d2u_x_dy2[0] = second_derivatives_in_y(
-                        Layer_list[1].u_x,
-                        Layer_list[2].u_x,
-                        Layer_list[0].u_x,
-                        h_mesh,
-                        h_mesh,
+                        layer_list[1].u_x,
+                        layer_list[2].u_x,
+                        layer_list[0].u_x,
+                        layer_list[1].h_mesh,
+                        layer_list[0].h_mesh,
                     )
 
                 elif layer_id == num_layers - 1:  # surface layer
                     d2u_x_dy2[-1] = second_derivatives_in_y(
-                        Layer_list[num_layers - 2].u_x,
-                        Layer_list[num_layers - 1].u_x,
-                        Layer_list[num_layers - 3].u_x,
-                        h_mesh,
-                        h_mesh,
+                        layer_list[num_layers - 2].u_x,
+                        layer_list[num_layers - 1].u_x,
+                        layer_list[num_layers - 3].u_x,
+                        layer_list[num_layers - 1].h_mesh,
+                        layer_list[num_layers - 2].h_mesh,
                     )
 
                 else:  # internal layers
                     d2u_x_dy2[layer_id] = second_derivatives_in_y(
-                        Layer_list[layer_id].u_x,
-                        Layer_list[layer_id + 1].u_x,
-                        Layer_list[layer_id - 1].u_x,
-                        h_mesh,
-                        h_mesh,
+                        layer_list[layer_id].u_x,
+                        layer_list[layer_id + 1].u_x,
+                        layer_list[layer_id - 1].u_x,
+                        layer_list[layer_id].h_mesh,
+                        layer_list[layer_id - 1].h_mesh,
                     )
 
             local_momentum_time = 0
@@ -232,16 +237,8 @@ def solifluction_simulate(
 
         if local_heat_transfer_time >= dt_heat_transfer:
 
-            layer_list[0].T = T_bed_lue
+            layer_list[0].T = temperature_bed
             layer_list[num_layers - 1].T = T_surface_lue
-
-            T_result[0] = T_bed_value
-            T_result[num_layers - 1] = T_surface_value
-
-            T_numpy_bed = lfr.to_numpy(Layer_list[0].T)
-            T_numpy_surf = lfr.to_numpy(Layer_list[num_layers - 1].T)
-            print("T_numpy_bed: \n", T_numpy_bed)
-            print("T_numpy_surf: \n", T_numpy_surf)
 
             for layer_id in range(1, num_layers - 1):
                 layer_list[layer_id].T = compute_temperature_1D_in_y(
@@ -252,7 +249,7 @@ def solifluction_simulate(
                     layer_list[layer_id].T,
                     layer_list[layer_id + 1].T,
                     layer_list[layer_id - 1].T,
-                    dt,
+                    dt_heat_transfer,
                     layer_list[layer_id].h_mesh,
                     layer_list[layer_id - 1].h_mesh,
                     compute_flag,
@@ -262,48 +259,87 @@ def solifluction_simulate(
             local_heat_transfer_time = 0
 
 
-usage = f"""\
-Solifluction simulation
+# usage = f"""\
+# Solifluction simulation
 
-Usage:
-    {os.path.basename(sys.argv[0])} <run_setup_file>
+# Usage:
+#     {os.path.basename(sys.argv[0])} <run_setup_file>
 
-Options:
-    <run_setup_file>         simulation setup file which defines the input variables
-"""
+# Options:
+#     <run_setup_file>         simulation setup file which defines the input variables
+# """
 
 
-def main():
+def main() -> None:
 
-    argv = list(sys.argv[1:])
-    arguments = docopt.docopt(usage, argv)
+    # argv = list(sys.argv[1:])
+    # arguments = docopt.docopt(usage, argv)
 
-    run_setup_file = arguments["<run_setup_file>"]
-    assert not os.path.splitext(run_setup_file)[1]
+    # run_setup_file = arguments["<run_setup_file>"]
+    # assert not os.path.splitext(run_setup_file)[1]
 
     # rho_s = 2650
     # porosity = 0.4
 
-    input_variables = read_run_setup("run_setup_file")
+    # input_variables = read_run_setup("run_setup_file")
 
-    dt_momentum: float = input_variables["time_step_momentum"]
-    dt_heat_transfer: float = input_variables["time_step_heat_transfer"]
-    dt_mass_conservation: float = input_variables["time_step_mass_conservation"]
-    partition_shape_size: int = input_variables["partition_shape_size"]
-    h_mesh_step_value: float = input_variables["initial_layer_size"]
-    mu_value: float = input_variables["uniform_mu"]
-    density_value: float = input_variables["uniform_density"]
-    k_conductivity_value: float = input_variables["uniform_k_conductivity"]
-    rho_c_heat_value: float = input_variables["uniform_rho_c_heat"]
-    h_total_initial_file: str = input_variables["h_total_initial_file"]
-    dt_momentum: float = input_variables["dt_momentum"]
-    dt_heat_transfer: float = input_variables["dt_heat_transfer"]
-    time_end_simulation: float = input_variables["time_end_simulation"]
+    # dt = float(config["simulation"]["dt"])
+    # dx = float(config["grid"]["dx"])
+    # file_u = config["boundary_conditions"]["u_file"]
 
-    heat_transfer_warmup: bool = input_variables.get("heat_transfer_warmup", False)
-    heat_transfer_warmup_iteration: int = input_variables.get(
-        "heat_transfer_warmup_iteration", 200
+    # dt_momentum: float = input_variables["time_step_momentum"]
+    # dt_heat_transfer: float = input_variables["time_step_heat_transfer"]
+    # dt_mass_conservation: float = input_variables["time_step_mass_conservation"]
+    # partition_shape_size: int = input_variables["partition_shape_size"]
+    # h_mesh_step_value: float = input_variables["initial_layer_size"]
+    # mu_value: float = input_variables["uniform_mu"]
+    # density_value: float = input_variables["uniform_density"]
+    # k_conductivity_value: float = input_variables["uniform_k_conductivity"]
+    # rho_c_heat_value: float = input_variables["uniform_rho_c_heat"]
+    # h_total_initial_file: str = input_variables["h_total_initial_file"]
+    # dt_momentum: float = input_variables["dt_momentum"]
+    # dt_heat_transfer: float = input_variables["dt_heat_transfer"]
+    # time_end_simulation: float = input_variables["time_end_simulation"]
+
+    # heat_transfer_warmup: bool = input_variables.get("heat_transfer_warmup", False)
+    # heat_transfer_warmup_iteration: int = input_variables.get(
+    #     "heat_transfer_warmup_iteration", 200
+    # )
+
+    input_variables: ConfigParser = load_config("param.txt")
+
+    dt_momentum: float = float(input_variables["simulation"]["dt_momentum"])
+    dt_heat_transfer: float = float(input_variables["simulation"]["dt_heat_transfer"])
+    dt_mass_conservation: float = float(
+        input_variables["simulation"]["dt_mass_conservation"]
     )
+    time_end_simulation: float = float(
+        input_variables["simulation"]["time_end_simulation"]
+    )
+
+    partition_shape_size: int = int(input_variables["grid"]["partition_shape_size"])
+    h_mesh_step_value: float = float(input_variables["grid"]["initial_layer_size"])
+
+    mu_value: float = float(input_variables["material"]["uniform_mu"])
+    density_value: float = float(input_variables["material"]["uniform_density"])
+    k_conductivity_value: float = float(
+        input_variables["material"]["uniform_k_conductivity"]
+    )
+    rho_c_heat_value: float = float(input_variables["material"]["uniform_rho_c_heat"])
+
+    h_total_initial_file: str = input_variables["initial_condition"][
+        "h_total_initial_file"
+    ]
+
+    heat_transfer_warmup: bool = input_variables.getboolean(
+        "simulation", "heat_transfer_warmup", fallback=False
+    )
+    heat_transfer_warmup_iteration: int = input_variables.getint(
+        "simulation", "heat_transfer_warmup_iteration", fallback=200
+    )
+
+    slope_radian: float = float(input_variables["simulation"]["alfa_slope"])
+    g_sin: float = np.sin(slope_radian) * 9.81
 
     # ---------------------  initial information --------------------
 
@@ -317,12 +353,12 @@ def main():
     geotransform = dataset.GetGeoTransform()
 
     dx = geotransform[1]  # Pixel width (Δx)
-    dy = abs(
+    dz = abs(
         geotransform[5]
-    )  # Pixel height (Δy) — take abs because it may be negative (north-up images)
+    )  # Pixel height (Δz) — take abs because it may be negative (north-up images)
 
     print(f"Pixel size dx: {dx}")
-    print(f"Pixel size dy: {dy}")
+    print(f"Pixel size dy: {dz}")
 
     raster_array = dataset.ReadAsArray()
 
@@ -380,8 +416,8 @@ def main():
         partition_shape=partition_shape,
     )
 
-    T_bed = zero_array_lue
-    # T_surface =
+    temperature_bed = zero_array_lue
+    temperature_surface_initial = zero_array_lue
 
     initial_u_x = zero_array_lue
     initial_u_z = zero_array_lue
@@ -412,11 +448,14 @@ def main():
     for _ in range(num_layers):
         d2u_x_dy2_initial.append(zero_array_lue)
 
+    nu_x: float = 0
+    nu_z: float = 0
+
     # ---------------------  initial information --------------------
 
     solifluction_simulate(
         dx,
-        dy,
+        dz,
         num_cols,
         num_rows,
         num_layers,
@@ -427,27 +466,13 @@ def main():
         time_end_simulation,
         heat_transfer_warmup,
         heat_transfer_warmup_iteration,
-        T_bed,
-        T_surface,
+        temperature_bed,
+        temperature_surface_initial,
         d2u_x_dy2_initial,
-        dt,
-        T_surf_file,
-        T_initial_file,
-        h_total_file,
-        mu_soil_initial_file,
-        mu_soil_surf_file,
-        U_x_surf_file,
-        U_x_initial_file,
-        gama_soil_surf_file,
-        gama_soil_initial_file,
-        phase_state_surf_file,
-        phase_state_initial_file,
-        thermal_diffusivity_coeff_surf_file,
-        vegetation_vol_fraction_surf_file,
-        vegetation_vol_fraction_initial_file,
+        h_mesh_step_value,
+        g_sin,
         nu_x,
-        nu_y,
-        nr_time_steps,
+        nu_z,
         partition_shape,
         results_pathname,
     )

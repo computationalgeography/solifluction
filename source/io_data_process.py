@@ -148,36 +148,36 @@ def default_boundary_type(
     return boundary_type_numpy_default, boundary_loc_numpy
 
 
-def read_run_setup(file_path: str) -> dict:
-    variables: dict = {}
+# def read_run_setup(file_path: str) -> dict:
+#     variables: dict = {}
 
-    # Check if file exists
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"Configuration file {file_path} not found.")
+#     # Check if file exists
+#     if not os.path.exists(file_path):
+#         raise FileNotFoundError(f"Configuration file {file_path} not found.")
 
-    with open(file_path, "r") as file:
-        for line in file:
-            line = line.strip()  # Remove leading/trailing whitespace
+#     with open(file_path, "r") as file:
+#         for line in file:
+#             line = line.strip()  # Remove leading/trailing whitespace
 
-            # Ignore empty lines or comments
-            if not line or line.startswith("#"):
-                continue
+#             # Ignore empty lines or comments
+#             if not line or line.startswith("#"):
+#                 continue
 
-            # Split the line at '=' and handle assignment
-            if "=" in line:
-                key, value = line.split("=", 1)
-                key = key.strip()  # Remove any extra whitespace around the key
-                value = value.strip()  # Remove extra whitespace around value
+#             # Split the line at '=' and handle assignment
+#             if "=" in line:
+#                 key, value = line.split("=", 1)
+#                 key = key.strip()  # Remove any extra whitespace around the key
+#                 value = value.strip()  # Remove extra whitespace around value
 
-                # Handle known types
-                if key == "dt":
-                    variables[key] = float(value)  # Convert dt to float
-                elif key == "u_xfile":
-                    variables[key] = value  # File path remains as string
-                # Add more type checks here if needed
+#                 # Handle known types
+#                 if key == "dt":
+#                     variables[key] = float(value)  # Convert dt to float
+#                 elif key == "u_xfile":
+#                     variables[key] = value  # File path remains as string
+#                 # Add more type checks here if needed
 
-                # Add any default handling for other variables as needed.
-                else:
-                    variables[key] = value  # Store as string by default
+#                 # Add any default handling for other variables as needed.
+#                 else:
+#                     variables[key] = value  # Store as string by default
 
-    return variables
+#     return variables

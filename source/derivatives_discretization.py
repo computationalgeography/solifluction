@@ -1,4 +1,6 @@
 # Discretize the derivatives
+from typing import Any
+
 import lue.framework as lfr
 import numpy as np
 
@@ -144,12 +146,12 @@ def dz_upwind(phi, dz, uz):
 
 # Second derivatives with non-uniform layer distance in y
 def second_derivatives_in_y(
-    layer_variable_center,
-    layer_variable_up,
-    layer_variable_down,
-    dy_layers_up,
-    dy_layers_down,
-):
+    layer_variable_center: Any,
+    layer_variable_up: Any,
+    layer_variable_down: Any,
+    dy_layers_up: Any,
+    dy_layers_down: Any,
+) -> Any:
     """
     Calculate second derivatives for a discretization of non-uniform layer
     distances in y.
