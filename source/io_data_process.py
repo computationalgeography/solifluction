@@ -2,11 +2,21 @@
 
 import os
 import os.path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import lue.framework as lfr
 import numpy as np
+import pandas as pd  # type: ignore
 from numpy.typing import NDArray
+from osgeo import gdal
+
+if TYPE_CHECKING:
+    from configparser import ConfigParser
+
+from pathlib import Path
+
+from source.config import load_config
+from source.layer import Layer
 
 # from typing import Type
 
@@ -181,3 +191,255 @@ def default_boundary_type(
 #                     variables[key] = value  # Store as string by default
 
 #     return variables
+
+
+def load_daily_temperatures(csv_path: str) -> tuple[list[float], list[float]]:
+    df = pd.read_csv(csv_path)
+    days = df["day"].values  # Day number (0, 1, 2, ...)
+    temps = df["temperature"].values  # temperature value
+    return days, temps
+
+
+def read_config_file(param_path: Path) -> tuple[
+    float,  # dt_momentum
+    float,  # dt_heat_transfer
+    float,  # dt_mass_conservation
+    float,  # time_end_simulation
+    int,  # partition_shape_size
+    float,  # h_mesh_step_value
+    float,  # mu_value
+    float,  # density_value
+    float,  # k_conductivity_value
+    float,  # rho_c_heat_value
+    str,  # h_total_initial_file
+    bool,  # heat_transfer_warmup
+    int,  # heat_transfer_warmup_iteration
+    list[float],  # days_temperature_file
+    list[float],  # temps_temperature_file
+    str,  # results_pathname
+    float,  # g_sin
+]:
+
+    input_variables: ConfigParser = load_config(param_path)
+
+    def clean_float(val: str) -> float:
+        return float(val.split("#")[0].strip())
+
+    def clean_int(val: str) -> int:
+        return int(val.split("#")[0].strip())
+
+    dt_momentum = clean_float(input_variables["simulation"]["dt_momentum"])
+    dt_heat_transfer = clean_float(input_variables["simulation"]["dt_heat_transfer"])
+    dt_mass_conservation = clean_float(
+        input_variables["simulation"]["dt_mass_conservation"]
+    )
+    time_end_simulation = clean_float(
+        input_variables["simulation"]["time_end_simulation"]
+    )
+
+    partition_shape_size = clean_int(input_variables["grid"]["partition_shape_size"])
+    h_mesh_step_value = clean_float(input_variables["grid"]["initial_layer_size"])
+
+    mu_value = clean_float(input_variables["material"]["uniform_mu"])
+    density_value = clean_float(input_variables["material"]["uniform_density"])
+    k_conductivity_value = clean_float(
+        input_variables["material"]["uniform_k_conductivity"]
+    )
+    rho_c_heat_value = clean_float(input_variables["material"]["uniform_rho_c_heat"])
+
+    h_total_initial_file = input_variables["initial_condition"][
+        "h_total_initial_file"
+    ].strip()
+
+    heat_transfer_warmup = input_variables.getboolean(
+        "simulation", "heat_transfer_warmup", fallback=False
+    )
+    heat_transfer_warmup_iteration = input_variables.getint(
+        "simulation", "heat_transfer_warmup_iteration", fallback=200
+    )
+
+    try:
+        temperature_file_csv = input_variables["material"]["temperature_file"].strip()
+        days_temperature_file, temps_temperature_file = load_daily_temperatures(
+            temperature_file_csv
+        )
+    except (ValueError, FileNotFoundError, UnicodeDecodeError) as e:
+        print(f"Error loading temperature file: {e}")
+        exit(1)
+
+    try:
+        results_pathname = input_variables["simulation"]["results_path"].strip()
+    except KeyError as err:
+        raise ValueError(f"Missing results path: {err}") from err
+
+    slope_radian = clean_float(input_variables["simulation"]["alfa_slope"])
+    g_sin = np.sin(slope_radian) * 9.81
+
+    return (
+        dt_momentum,
+        dt_heat_transfer,
+        dt_mass_conservation,
+        time_end_simulation,
+        partition_shape_size,
+        h_mesh_step_value,
+        mu_value,
+        density_value,
+        k_conductivity_value,
+        rho_c_heat_value,
+        h_total_initial_file,
+        heat_transfer_warmup,
+        heat_transfer_warmup_iteration,
+        days_temperature_file,
+        temps_temperature_file,
+        results_pathname,
+        g_sin,
+    )
+
+
+def read_tif_info_from_gdal(
+    tif_file: str,
+) -> tuple[float, float, tuple[int, int], float]:
+
+    print("read_tif_info_from_gdal in run")
+
+    dataset = gdal.Open(tif_file)
+    num_cols = dataset.RasterXSize
+    num_rows = dataset.RasterYSize
+
+    print(f"num_cols: {num_cols}")
+    print(f"num_rows: {num_rows}")
+
+    geotransform = dataset.GetGeoTransform()
+
+    dx = geotransform[1]  # Pixel width (Δx)
+    dz = abs(
+        geotransform[5]
+    )  # Pixel height (Δz) — take abs because it may be negative (north-up images)
+
+    print(f"Pixel size dx: {dx}")
+    print(f"Pixel size dy: {dz}")
+
+    raster_array = dataset.ReadAsArray()
+
+    max_h_total = np.max(raster_array)
+    print(f"max_h_total: {max_h_total}")
+
+    array_shape = (
+        num_rows,
+        num_cols,
+    )
+
+    return dx, dz, array_shape, max_h_total
+
+
+def initiate_layers_variables(
+    max_h_total: float,
+    bed_depth_elevation: float,
+    h_mesh_step_value: float,
+    array_shape: tuple[int, int],
+    partition_shape: tuple[int, int],
+    h_total_initial_file: str,
+    mu_value: float,
+    density_value: float,
+    k_conductivity_value: float,
+    rho_c_heat_value: float,
+) -> tuple[Layer, list[Any], Any, int, Any]:
+
+    print("initiate_initial_layers_variables is in run")
+
+    num_layers: int = int(
+        np.round(max_h_total - bed_depth_elevation) / h_mesh_step_value + 1
+    )
+
+    h_total_initial = lfr.from_gdal(
+        h_total_initial_file, partition_shape=partition_shape
+    )
+
+    zero_array_lue = lfr.create_array(
+        array_shape,
+        dtype=np.float64,
+        fill_value=0.0,
+        partition_shape=partition_shape,
+    )
+
+    mu_array_lue = lfr.create_array(
+        array_shape,
+        dtype=np.float64,
+        fill_value=mu_value,
+        partition_shape=partition_shape,
+    )
+
+    density_array_lue = lfr.create_array(
+        array_shape,
+        dtype=np.float64,
+        fill_value=density_value,
+        partition_shape=partition_shape,
+    )
+
+    k_conductivity_array_lue = lfr.create_array(
+        array_shape,
+        dtype=np.float64,
+        fill_value=k_conductivity_value,
+        partition_shape=partition_shape,
+    )
+
+    rho_c_heat_array_lue = lfr.create_array(
+        array_shape,
+        dtype=np.float64,
+        fill_value=rho_c_heat_value,
+        partition_shape=partition_shape,
+    )
+
+    temperature_bed = zero_array_lue
+    # temperature_surface_initial = zero_array_lue
+
+    initial_u_x = zero_array_lue
+    initial_u_z = zero_array_lue
+    initial_temperature = zero_array_lue
+    initial_h_mesh = zero_array_lue  # this will be updated by "h_mesh_assign" function
+    initial_mu_soil = mu_array_lue
+    initial_density_soil = density_array_lue
+    initial_phase_state = zero_array_lue
+    initial_k_conductivity_heat = k_conductivity_array_lue
+    initial_rho_c_heat = rho_c_heat_array_lue
+    initial_vegetation_vol_fraction = zero_array_lue
+
+    initial_layer_variables: Layer = Layer(
+        initial_u_x,
+        initial_u_z,
+        initial_temperature,
+        initial_h_mesh,
+        initial_mu_soil,
+        initial_density_soil,
+        initial_phase_state,
+        initial_k_conductivity_heat,
+        initial_rho_c_heat,
+        initial_vegetation_vol_fraction,
+    )
+
+    d2u_x_dy2_initial = []
+
+    for _ in range(num_layers):
+        d2u_x_dy2_initial.append(zero_array_lue)
+
+    return (
+        initial_layer_variables,
+        d2u_x_dy2_initial,
+        h_total_initial,
+        num_layers,
+        temperature_bed,
+    )
+
+
+def write_tif_file(
+    array: Any, output_file_name: str, iteration: int, output_folder_path: str
+) -> None:
+    """Write a lue array to a .tif file using lfr.to_gdal."""
+
+    os.makedirs(output_folder_path, exist_ok=True)
+
+    output_path = os.path.join(
+        output_folder_path, f"{output_file_name}-{iteration}.tif"
+    )
+
+    lfr.to_gdal(array, output_path)
