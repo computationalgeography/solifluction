@@ -1,0 +1,54 @@
+[simulation]
+# 1 day in seconds — OK if you assume constant velocity
+dt_momentum = 86400
+
+# Can be large if temperature changes slowly
+dt_heat_transfer = 86400
+
+# Same as above
+dt_mass_conservation = 86400
+
+# ~10 days — OK
+time_end_simulation = 864000
+
+# Correct boolean syntax
+heat_transfer_warmup = False
+
+# Optional warmup iterations
+# heat_transfer_warmup_iteration = 300
+
+# Relative path — make sure folder exists
+results_path = ./results
+
+# Radians — small slope, realistic for solifluction
+alfa_slope = 0.1
+
+
+[grid]
+# number of cells per partition — OK
+partition_shape_size = 100
+
+# Mesh layer thickness in meters — reasonable
+initial_layer_size = 5
+
+
+[material]
+# Realistic for wet soil
+uniform_mu = 0.3
+
+# Wet soil (lower than rock)
+uniform_density = 1800
+
+# W/m·K — plausible
+uniform_k_conductivity = 0.25
+
+# J/m³·K — reasonable
+uniform_rho_c_heat = 900000
+
+# Make sure this file exists
+temperature_file = temperature_file.csv
+
+
+[initial_condition]
+# Initial height map — make sure path is correct
+h_total_initial_file = h_uniform_initial.tif

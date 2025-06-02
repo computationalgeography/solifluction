@@ -316,6 +316,31 @@ def solifluction_simulate(
             h_total_simulated_lue, "h_total", iteration_write_h_total, results_pathname
         )
 
+        write_tif_file(
+            layer_list[-1].u_x, "u_x_surface", iteration_write_h_total, results_pathname
+        )
+
+        write_tif_file(
+            layer_list[num_layers // 2].u_x,
+            "u_x_midlayer",
+            iteration_write_h_total,
+            results_pathname,
+        )
+
+        write_tif_file(
+            layer_list[-1].T,
+            "temperature_surface",
+            iteration_write_h_total,
+            results_pathname,
+        )
+
+        write_tif_file(
+            layer_list[num_layers // 2].T,
+            "temperature_midlayer",
+            iteration_write_h_total,
+            results_pathname,
+        )
+
         iteration_write_h_total = iteration_write_h_total + 1
 
         print("simulation iteration_write_h_total: ", iteration_write_h_total)
