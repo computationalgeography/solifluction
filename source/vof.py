@@ -225,37 +225,66 @@ def calculate_total_h(layer_list):
 
 # #     return h_mesh, remained_h_total_to_assign
 
+# tested old version
+# def h_mesh_assign(h_total, num_layers, prespecified_uniform_h_mesh_value, layer_list):
 
-def h_mesh_assign(h_total, num_layers, prespecified_uniform_h_mesh_value, layer_list):
+#     h_total_remain = h_total
+
+#     layer_list[0].h_mesh = lfr.where(
+#         h_total_remain < prespecified_uniform_h_mesh_value,
+#         h_total_remain,
+#         prespecified_uniform_h_mesh_value,
+#     )
+
+#     h_total_remain = h_total_remain - prespecified_uniform_h_mesh_value
+
+#     h_total_remain = lfr.where(
+#         h_total_remain < 0,
+#         0,
+#         h_total_remain,
+#     )
+
+#     for i in range(1, num_layers):
+
+#         layer_list[i].h_mesh = lfr.where(
+#             h_total_remain < prespecified_uniform_h_mesh_value,
+#             h_total_remain,
+#             prespecified_uniform_h_mesh_value,
+#         )
+
+#         h_total_remain = h_total_remain - prespecified_uniform_h_mesh_value
+
+#         h_total_remain = lfr.where(
+#             h_total_remain < 0,
+#             0,
+#             h_total_remain,
+#         )
+
+
+def h_mesh_assign(h_total, num_layers, prespecified_uniform_h_mesh_value):
 
     h_total_remain = h_total
+    h_mesh_list = []
 
-    layer_list[0].h_mesh = lfr.where(
+    h_mesh = lfr.where(
         h_total_remain < prespecified_uniform_h_mesh_value,
         h_total_remain,
         prespecified_uniform_h_mesh_value,
     )
+    h_mesh_list.append(h_mesh)
 
     h_total_remain = h_total_remain - prespecified_uniform_h_mesh_value
+    h_total_remain = lfr.where(h_total_remain < 0, 0, h_total_remain)
 
-    h_total_remain = lfr.where(
-        h_total_remain < 0,
-        0,
-        h_total_remain,
-    )
-
-    for i in range(1, num_layers):
-
-        layer_list[i].h_mesh = lfr.where(
+    for _ in range(1, num_layers):
+        h_mesh = lfr.where(
             h_total_remain < prespecified_uniform_h_mesh_value,
             h_total_remain,
             prespecified_uniform_h_mesh_value,
         )
+        h_mesh_list.append(h_mesh)
 
         h_total_remain = h_total_remain - prespecified_uniform_h_mesh_value
+        h_total_remain = lfr.where(h_total_remain < 0, 0, h_total_remain)
 
-        h_total_remain = lfr.where(
-            h_total_remain < 0,
-            0,
-            h_total_remain,
-        )
+    return h_mesh_list

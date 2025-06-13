@@ -239,6 +239,7 @@ def read_config_file(param_path: Path) -> tuple[
 
     partition_shape_size = clean_int(input_variables["grid"]["partition_shape_size"])
     h_mesh_step_value = clean_float(input_variables["grid"]["initial_layer_size"])
+    h_mesh_step_value = np.float64(h_mesh_step_value)
 
     mu_value = clean_float(input_variables["material"]["uniform_mu"])
     density_value = clean_float(input_variables["material"]["uniform_density"])

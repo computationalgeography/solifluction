@@ -85,12 +85,12 @@ def solifluction_simulate(
 
     print("start to run solifluction_simulate")
 
-    zero_lue: Any = lfr.create_array(
-        array_shape,
-        dtype=np.float64,
-        fill_value=0.0,
-        partition_shape=partition_shape,
-    )
+    # zero_lue: Any = lfr.create_array(
+    #     array_shape,
+    #     dtype=np.float64,
+    #     fill_value=0.0,
+    #     partition_shape=partition_shape,
+    # )
 
     layer_list: list[Layer] = []
 
@@ -103,6 +103,16 @@ def solifluction_simulate(
 
     # Assign surface layer properties
     layer_list.append(initial_layer_variables)
+
+    print(
+        "type of initial_layer_variables.h_mesh:",
+        type(initial_layer_variables.h_mesh),
+    )
+
+    print(
+        "type of initial_layer_variables.mu_soil:",
+        type(initial_layer_variables.mu_soil),
+    )
 
     # ---------------- boundary condition set --------------------------
 
@@ -145,7 +155,21 @@ def solifluction_simulate(
 
     # ---------------- End: boundary condition set --------------------------
 
-    h_mesh_assign(h_total_initial, num_layers, h_mesh_step_value, layer_list)
+    # print(
+    #     " Before function h_mesh_assign type of h_total_initial:",
+    #     type(h_total_initial),
+    # )
+
+    h_mesh_list = h_mesh_assign(
+        h_total_initial, num_layers, np.float64(h_mesh_step_value)
+    )
+    for i in range(num_layers):
+        layer_list[i].h_mesh = h_mesh_list[i]
+
+    # print(
+    #     " after function h_mesh_assign type of layer_list[1].h_mesh:",
+    #     type(layer_list[1].h_mesh),
+    # )
 
     if heat_transfer_warmup:
 
@@ -158,10 +182,6 @@ def solifluction_simulate(
 
             for layer_id in range(1, num_layers - 1):
 
-                compute_flag_temperature = lfr.where(
-                    layer_list[layer_id].h_mesh > 0, 1, 0
-                )
-
                 layer_list[layer_id].T = compute_temperature_1D_in_y(
                     layer_list[layer_id].k_conductivity_heat,
                     layer_list[layer_id + 1].k_conductivity_heat,
@@ -173,7 +193,6 @@ def solifluction_simulate(
                     dt_heat_transfer,
                     layer_list[layer_id].h_mesh,
                     layer_list[layer_id - 1].h_mesh,
-                    compute_flag_temperature,
                     surface_temperature,
                 )
 
@@ -194,7 +213,7 @@ def solifluction_simulate(
 
         print("time: ", time)
 
-        if local_momentum_time >= dt_momentum:
+        if abs(time - local_momentum_time) >= dt_momentum:
 
             print("momentum_ux in run")
 
@@ -227,6 +246,10 @@ def solifluction_simulate(
 
             for layer_id in range(0, num_layers):
                 if layer_id == 0:  # bed layer
+
+                    # print("type of layer_list[1].u_x:", type(layer_list[1].u_x))
+                    # print("type of layer_list[1].h_mesh:", type(layer_list[1].h_mesh))
+
                     d2u_x_dy2[0] = second_derivatives_in_y(
                         layer_list[1].u_x,
                         layer_list[2].u_x,
@@ -253,9 +276,9 @@ def solifluction_simulate(
                         layer_list[layer_id - 1].h_mesh,
                     )
 
-            local_momentum_time = 0
+            local_momentum_time = local_momentum_time + dt_momentum
 
-        if local_mass_conservation_time >= dt_mass_conservation:
+        if abs(time - local_mass_conservation_time) >= dt_mass_conservation:
 
             print("mass_conservation_2D_vof in run")
 
@@ -272,11 +295,13 @@ def solifluction_simulate(
                 Neumann_boundary_value,
             )
 
-            local_mass_conservation_time = 0
+            local_mass_conservation_time = (
+                local_mass_conservation_time + dt_mass_conservation
+            )
 
         # compute temperatures in internal layers
 
-        if local_heat_transfer_time >= dt_heat_transfer:
+        if abs(time - local_heat_transfer_time) >= dt_heat_transfer:
 
             print("compute_temperature_1D_in_y in run")
 
@@ -289,10 +314,6 @@ def solifluction_simulate(
 
             for layer_id in range(1, num_layers - 1):
 
-                compute_flag_temperature = lfr.where(
-                    layer_list[layer_id].h_mesh > 0, 1, 0
-                )
-
                 layer_list[layer_id].T = compute_temperature_1D_in_y(
                     layer_list[layer_id].k_conductivity_heat,
                     layer_list[layer_id + 1].k_conductivity_heat,
@@ -304,11 +325,10 @@ def solifluction_simulate(
                     dt_heat_transfer,
                     layer_list[layer_id].h_mesh,
                     layer_list[layer_id - 1].h_mesh,
-                    compute_flag_temperature,
                     surface_temperature,
                 )
 
-            local_heat_transfer_time = 0
+            local_heat_transfer_time = local_heat_transfer_time + dt_heat_transfer
 
         h_total_simulated_lue = calculate_total_h(layer_list)
 

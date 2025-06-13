@@ -164,6 +164,53 @@ def update_thermal_diffusivity_coeff(
 # Heat transfer 1D equation in y: [d_T/dt - ((1/rho_c) *(d_k/dy * d_T/dy)) - ((k/rho_c) * d2_T/dy2) = 0]
 
 
+# def compute_temperature_1D_in_y(
+#     k_center,
+#     k_up,
+#     k_down,
+#     rho_c_center,
+#     T_center_layer,
+#     T_up_layer,
+#     T_down_layer,
+#     dt: float,
+#     dy_up,
+#     dy_down,
+#     compute_flag,  # compute_flag: 1 = compute, 0 = use precomputed_value
+#     precomputed_value,
+# ):
+
+#     # k: thermal conductivity
+
+#     T_center_layer = lfr.where(
+#         compute_flag,
+#         T_center_layer
+#         + (
+#             (dt / rho_c_center)
+#             * dy_upwind(
+#                 T_center_layer, T_up_layer, T_down_layer, dy_up, dy_down, rho_c_center
+#             )
+#             * dy_upwind(k_center, k_up, k_down, dy_up, dy_down, rho_c_center)
+#         )
+#         + (
+#             (dt * k_center / rho_c_center)
+#             * second_derivatives_in_y(
+#                 T_center_layer,
+#                 T_up_layer,
+#                 T_down_layer,
+#                 dy_up,
+#                 dy_down,
+#             )
+#         ),
+#         precomputed_value,
+#     )
+
+#     return T_center_layer
+
+
+# revised in 20250610 due to editing compute_flag (no  need to this) computation flag
+# can be detected only by dy_up (h_mesh layer)
+
+
 def compute_temperature_1D_in_y(
     k_center,
     k_up,
@@ -175,14 +222,13 @@ def compute_temperature_1D_in_y(
     dt: float,
     dy_up,
     dy_down,
-    compute_flag,  # compute_flag: 1 = compute, 0 = use precomputed_value
     precomputed_value,
 ):
 
     # k: thermal conductivity
 
     T_center_layer = lfr.where(
-        compute_flag,
+        dy_up > 0,
         T_center_layer
         + (
             (dt / rho_c_center)

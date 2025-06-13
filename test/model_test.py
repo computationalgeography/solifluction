@@ -1031,6 +1031,22 @@ class TestPackage(unittest.TestCase):
                 # print("T_numpy_surf: \n", T_numpy_surf)
 
                 # compute temperatures in internal layers
+                # for layer_id in range(1, num_layers - 1):
+                #     Layer_list[layer_id].T = compute_temperature_1D_in_y(
+                #         Layer_list[layer_id].k_conductivity_heat,
+                #         Layer_list[layer_id + 1].k_conductivity_heat,
+                #         Layer_list[layer_id - 1].k_conductivity_heat,
+                #         Layer_list[layer_id].rho_c_heat,
+                #         Layer_list[layer_id].T,
+                #         Layer_list[layer_id + 1].T,
+                #         Layer_list[layer_id - 1].T,
+                #         dt,
+                #         Layer_list[layer_id].h_mesh,
+                #         Layer_list[layer_id - 1].h_mesh,
+                #         compute_flag,
+                #         precomputed_value,
+                #     )
+
                 for layer_id in range(1, num_layers - 1):
                     Layer_list[layer_id].T = compute_temperature_1D_in_y(
                         Layer_list[layer_id].k_conductivity_heat,
@@ -1043,7 +1059,6 @@ class TestPackage(unittest.TestCase):
                         dt,
                         Layer_list[layer_id].h_mesh,
                         Layer_list[layer_id - 1].h_mesh,
-                        compute_flag,
                         precomputed_value,
                     )
 
@@ -1193,7 +1208,11 @@ class TestPackage(unittest.TestCase):
         # plt.colorbar()
         # plt.show()
 
-        h_mesh_assign(h_total_lue, num_layers, h_mesh_step_value, layer_list)
+        # h_mesh_assign(h_total_lue, num_layers, h_mesh_step_value, layer_list)
+
+        h_mesh_list = h_mesh_assign(h_total_lue, num_layers, h_mesh_step_value)
+        for i in range(num_layers):
+            layer_list[i].h_mesh = h_mesh_list[i]
 
         # layer_0_h_mesh_numpy = lfr.to_numpy(layer_list[0].h_mesh)
         # layer_1_h_mesh_numpy = lfr.to_numpy(layer_list[1].h_mesh)
@@ -1442,7 +1461,11 @@ class TestPackage(unittest.TestCase):
         plt.savefig(os.path.join(folder_path, "h_total_initial.png"))
         plt.close()
 
-        h_mesh_assign(h_total_initial_lue, num_layers, h_mesh_step_value, layer_list)
+        # h_mesh_assign(h_total_initial_lue, num_layers, h_mesh_step_value, layer_list)
+
+        h_mesh_list = h_mesh_assign(h_total_initial_lue, num_layers, h_mesh_step_value)
+        for i in range(num_layers):
+            layer_list[i].h_mesh = h_mesh_list[i]
 
         layer_5_h_mesh_initial_numpy = lfr.to_numpy(layer_list[5].h_mesh)
 
