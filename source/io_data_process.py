@@ -202,6 +202,7 @@ def load_daily_temperatures(csv_path: str) -> tuple[list[float], list[float]]:
 
 def read_config_file(param_path: Path) -> tuple[
     float,  # dt_momentum
+    int,  # momentum_iteration_threshold
     float,  # dt_heat_transfer
     float,  # dt_mass_conservation
     float,  # time_end_simulation
@@ -233,6 +234,11 @@ def read_config_file(param_path: Path) -> tuple[
     dt_mass_conservation = clean_float(
         input_variables["simulation"]["dt_mass_conservation"]
     )
+
+    momentum_iteration_threshold = clean_int(
+        input_variables["simulation"]["momentum_iteration_threshold"]
+    )
+
     time_end_simulation = clean_float(
         input_variables["simulation"]["time_end_simulation"]
     )
@@ -278,6 +284,7 @@ def read_config_file(param_path: Path) -> tuple[
 
     return (
         dt_momentum,
+        momentum_iteration_threshold,
         dt_heat_transfer,
         dt_mass_conservation,
         time_end_simulation,
@@ -344,12 +351,12 @@ def initiate_layers_variables(
     density_value: float,
     k_conductivity_value: float,
     rho_c_heat_value: float,
-) -> tuple[Layer, list[Any], Any, int, Any]:
+) -> tuple[list[Layer], list[Any], Any, int, Any]:
 
     print("initiate_initial_layers_variables is in run")
 
     num_layers: int = int(
-        np.round(max_h_total - bed_depth_elevation) / h_mesh_step_value + 1
+        np.ceil(max_h_total - bed_depth_elevation) / h_mesh_step_value + 1
     )
 
     h_total_initial = lfr.from_gdal(
@@ -405,17 +412,73 @@ def initiate_layers_variables(
     initial_rho_c_heat = rho_c_heat_array_lue
     initial_vegetation_vol_fraction = zero_array_lue
 
-    initial_layer_variables: Layer = Layer(
-        initial_u_x,
-        initial_u_z,
-        initial_temperature,
-        initial_h_mesh,
-        initial_mu_soil,
-        initial_density_soil,
-        initial_phase_state,
-        initial_k_conductivity_heat,
-        initial_rho_c_heat,
-        initial_vegetation_vol_fraction,
+    # initial_layer_variables: Layer = Layer(
+    #     initial_u_x,
+    #     initial_u_z,
+    #     initial_temperature,
+    #     initial_h_mesh,
+    #     initial_mu_soil,
+    #     initial_density_soil,
+    #     initial_phase_state,
+    #     initial_k_conductivity_heat,
+    #     initial_rho_c_heat,
+    #     initial_vegetation_vol_fraction,
+    # )
+
+    # NOTE: number of layers is 0 to "num_layers" for bed layer to surface layer
+
+    # Assign bed layer properties
+
+    layer_list: list[Layer] = []
+
+    layer_list.append(
+        Layer(
+            initial_u_x,
+            initial_u_z,
+            initial_temperature,
+            initial_h_mesh,
+            initial_mu_soil,
+            initial_density_soil,
+            initial_phase_state,
+            initial_k_conductivity_heat,
+            initial_rho_c_heat,
+            initial_vegetation_vol_fraction,
+        )
+    )
+
+    # Assign internal layers properties
+
+    for i in range(1, num_layers):
+        layer_list.append(
+            Layer(
+                initial_u_x,
+                initial_u_z,
+                initial_temperature,
+                initial_h_mesh,
+                initial_mu_soil,
+                initial_density_soil,
+                initial_phase_state,
+                initial_k_conductivity_heat,
+                initial_rho_c_heat,
+                initial_vegetation_vol_fraction,
+            )
+        )
+
+    # Assign surface layer properties
+
+    layer_list.append(
+        Layer(
+            initial_u_x,
+            initial_u_z,
+            initial_temperature,
+            initial_h_mesh,
+            initial_mu_soil,
+            initial_density_soil,
+            initial_phase_state,
+            initial_k_conductivity_heat,
+            initial_rho_c_heat,
+            initial_vegetation_vol_fraction,
+        )
     )
 
     d2u_x_dy2_initial = []
@@ -424,7 +487,7 @@ def initiate_layers_variables(
         d2u_x_dy2_initial.append(zero_array_lue)
 
     return (
-        initial_layer_variables,
+        layer_list,
         d2u_x_dy2_initial,
         h_total_initial,
         num_layers,

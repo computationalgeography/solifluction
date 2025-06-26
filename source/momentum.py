@@ -384,4 +384,18 @@ def momentum_ux(
         dz,
     )
 
+    # ----------------
+
+    # phi_u_x_numpy = lfr.to_numpy(phi)
+    # print(
+    #     "inside momentum_ux function phi_u_x_numpy[10,10]",
+    #     phi_u_x_numpy[10, 10],
+    # )
+
+    # rhs_numpy = lfr.to_numpy(rhs)
+    # print(
+    #     "inside momentum_ux function rhs_numpy[10,10]",
+    #     rhs_numpy[10, 10],
+    # )
+
     return phi

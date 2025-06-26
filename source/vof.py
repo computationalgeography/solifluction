@@ -1,3 +1,5 @@
+from typing import Any
+
 import lue.framework as lfr
 import numpy as np
 
@@ -133,7 +135,7 @@ def mass_conservation_2D_vof(
     return phi
 
 
-def calculate_total_h(layer_list):
+def calculate_total_h(layer_list: Any) -> Any:
 
     h_total = layer_list[0].h_mesh
 
@@ -225,8 +227,9 @@ def calculate_total_h(layer_list):
 
 # #     return h_mesh, remained_h_total_to_assign
 
+
 # tested old version
-# def h_mesh_assign(h_total, num_layers, prespecified_uniform_h_mesh_value, layer_list):
+# def h_mesh_assign_0(h_total, num_layers, prespecified_uniform_h_mesh_value, layer_list):
 
 #     h_total_remain = h_total
 
@@ -261,7 +264,9 @@ def calculate_total_h(layer_list):
 #         )
 
 
-def h_mesh_assign(h_total, num_layers, prespecified_uniform_h_mesh_value):
+def h_mesh_assign(
+    h_total: Any, num_layers: Any, prespecified_uniform_h_mesh_value: float
+) -> list[Any]:
 
     h_total_remain = h_total
     h_mesh_list = []

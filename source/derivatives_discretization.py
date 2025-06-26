@@ -47,12 +47,12 @@ kernel_i_jp1 = np.array(
 )
 
 
-def dx_forward(phi, dx):
+def dx_forward(phi: Any, dx: float) -> Any:
 
     return (lfr.focal_sum(phi, kernel_ip1_j) - phi) / dx
 
 
-def dx_backward(phi, dx):
+def dx_backward(phi: Any, dx: float) -> Any:
 
     return (phi - lfr.focal_sum(phi, kernel_im1_j)) / dx
 
@@ -131,7 +131,7 @@ def d2z_central(phi, dz):
     ) / (dz**2)
 
 
-def dx_upwind(phi, dx, ux):
+def dx_upwind(phi: Any, dx: float, ux: Any) -> Any:
 
     return lfr.where(ux >= 0, dx_backward(phi, dx), dx_forward(phi, dx))
 
