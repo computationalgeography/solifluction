@@ -356,7 +356,9 @@ def initiate_layers_variables(
     print("initiate_initial_layers_variables is in run")
 
     num_layers: int = int(
-        np.ceil(max_h_total - bed_depth_elevation) / h_mesh_step_value + 1
+        np.ceil(max_h_total - bed_depth_elevation)
+        / h_mesh_step_value
+        # np.ceil(max_h_total - bed_depth_elevation) / h_mesh_step_value + 1
     )
 
     h_total_initial = lfr.from_gdal(

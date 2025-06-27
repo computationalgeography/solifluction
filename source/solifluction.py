@@ -340,9 +340,9 @@ def solifluction_simulate(
 
             print("local_heat_transfer_iteration :", local_heat_transfer_iteration)
 
-        # --------------- End: compute temperatures in internal layers -------------------------
+        # --------------- End: compute temperatures in internal layers -----------------
 
-        # --------------- compute momentum u_x in internal layers ------------------------------
+        # --------------- compute momentum u_x in internal layers ----------------------
 
         for local_momentum_iteration in range(1, momentum_iteration_threshold + 1):
             # while (
@@ -368,6 +368,13 @@ def solifluction_simulate(
                         (gama_prim_surface / layer_list[layer_id].density_soil)
                         * dx_upwind(h_total, dx, layer_list[layer_id].u_x)
                     )
+                )
+
+                # NOTE: rhs cannot be negative as the flow cannot be to the upstream
+                rhs = lfr.where(
+                    (rhs > 0),
+                    rhs,
+                    0,
                 )
 
                 # print("type of layer_list[layer_id].T:", type(layer_list[layer_id].T))
@@ -518,6 +525,16 @@ def solifluction_simulate(
                     layer_id,
                 )
 
+            for layer_id in range(0, num_layers):
+
+                layer_h_mesh_numpy = lfr.to_numpy(layer_list[layer_id].h_mesh)
+                print(
+                    "layer_h_mesh_numpy[10,10]",
+                    layer_h_mesh_numpy[10, 10],
+                    "layer_id",
+                    layer_id,
+                )
+
             # local_momentum_time = local_momentum_time + dt_momentum
             # local_momentum_iteration = local_momentum_iteration + 1
 
@@ -529,10 +546,10 @@ def solifluction_simulate(
             #         time - (momentum_iteration_threshold * dt_momentum)
             #     ) + dt_mass_conservation
 
-            print("time inside momentum u_x", time)
-            # input("enter to continue ...")
+        print("time inside momentum u_x", time)
+        input("enter to continue ...")
 
-        # --------------- End: compute momentum u_x in internal layers -------------------------------
+        # --------------- End: compute momentum u_x in internal layers -----------------
 
         # --------------- compute VOF -------------------------------
 

@@ -268,6 +268,8 @@ def h_mesh_assign(
     h_total: Any, num_layers: Any, prespecified_uniform_h_mesh_value: float
 ) -> list[Any]:
 
+    epsilon = 1e-5
+
     h_total_remain = h_total
     h_mesh_list = []
 
@@ -287,6 +289,7 @@ def h_mesh_assign(
             h_total_remain,
             prespecified_uniform_h_mesh_value,
         )
+        h_mesh = lfr.where(h_mesh < epsilon, 0.0, h_mesh)
         h_mesh_list.append(h_mesh)
 
         h_total_remain = h_total_remain - prespecified_uniform_h_mesh_value
