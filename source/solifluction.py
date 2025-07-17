@@ -20,6 +20,7 @@ from source.io_data_process import (
 )
 from source.momentum import momentum_ux
 from source.phase_detect import phase_detect_from_temperature
+from source.viscosity_calc import viscosity_exp_temp
 from source.vof import calculate_total_h, h_mesh_assign, mass_conservation_2D_vof
 
 # from source.boundary_condition import boundary_set
@@ -209,21 +210,38 @@ def solifluction_simulate(
     #         i,
     #     )
 
+    # initial temperature assign (linear)
+
+    surface_temperature = temps_temperature_file[0]
+
+    surface_temperature_lue = lfr.create_array(
+        array_shape,
+        dtype=np.float64,
+        fill_value=surface_temperature,
+        partition_shape=partition_shape,
+    )
+
+    layer_list[0].T = temperature_bed
+
+    for layer_id in range(1, num_layers):
+
+        layer_list[layer_id].T = (layer_id / num_layers) * surface_temperature_lue
+
     if heat_transfer_warmup:
 
         for _ in range(1, heat_transfer_warmup_iteration):
 
-            surface_temperature = temps_temperature_file[0]
+            # surface_temperature = temps_temperature_file[0]
 
-            surface_temperature_lue = lfr.create_array(
-                array_shape,
-                dtype=np.float64,
-                fill_value=surface_temperature,
-                partition_shape=partition_shape,
-            )
+            # surface_temperature_lue = lfr.create_array(
+            #     array_shape,
+            #     dtype=np.float64,
+            #     fill_value=surface_temperature,
+            #     partition_shape=partition_shape,
+            # )
 
-            layer_list[0].T = temperature_bed
-            layer_list[num_layers - 1].T = surface_temperature_lue
+            # layer_list[0].T = temperature_bed
+            # layer_list[num_layers - 1].T = surface_temperature_lue
 
             for layer_id in range(1, num_layers - 1):
 
@@ -353,6 +371,13 @@ def solifluction_simulate(
 
             for layer_id in range(1, num_layers):
 
+                # a, b: 2e13, 0.4605 (T_data = ([0, 5]), mu_data([2e13, 2e12]))
+                # a, b: 2e13, 0.9210 (T_data = ([0, 5]), mu_data([2e13, 2e11]))
+
+                layer_list[layer_id].mu_soil = viscosity_exp_temp(
+                    layer_list[layer_id].T, 2e13, 0.9210
+                )
+
                 gama_prim_surface: float = (2610 - 1000) * 9.81
 
                 rhs = (
@@ -370,7 +395,7 @@ def solifluction_simulate(
                     )
                 )
 
-                # NOTE: rhs cannot be negative as the flow cannot be to the upstream
+                # NOTE: rhs cannot be negative as the fluid cannot flow to the upstream
                 rhs = lfr.where(
                     (rhs > 0),
                     rhs,
@@ -521,6 +546,13 @@ def solifluction_simulate(
                 print(
                     "layer_u_x_numpy[10,10]",
                     layer_u_x_numpy[10, 10],
+                    "layer_id",
+                    layer_id,
+                )
+
+                print(
+                    "layer_u_x_numpy[10,10] (cm/year)",
+                    layer_u_x_numpy[10, 10] * 3600 * 24 * 365 * 100,
                     "layer_id",
                     layer_id,
                 )
