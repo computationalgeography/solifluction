@@ -3,12 +3,12 @@ name: Install and Test on Linux
 on:
   push:
     branches:
-      # - '*'  # Runs on all branches
-      - 'draft_with_heat_transfer'
+      - '*'  # Runs on all branches
+      # - 'draft_with_heat_transfer'
   pull_request:
     branches:
-      # - '*'  # Runs on all pull requests
-      - 'draft_with_heat_transfer'
+      - '*'  # Runs on all pull requests
+      #- 'draft_with_heat_transfer'
 
 # jobs:
 #   test-linux:
