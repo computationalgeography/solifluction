@@ -7,17 +7,17 @@ from source.boundary_condition import boundary_set
 
 
 def mass_conservation_2D_vof(
-    phi,
-    u_x_mesh,
-    u_z_mesh,
-    dt,
-    dx,
-    dz,
-    boundary_loc,
-    boundary_type,
-    Dirichlet_boundary_value,
-    Neumann_boundary_value,
-):
+    phi: Any,
+    u_x_mesh: Any,
+    u_z_mesh: Any,
+    dt: float,
+    dx: float,
+    dz: float,
+    boundary_loc: Any,
+    boundary_type: Any,
+    Dirichlet_boundary_value: Any,
+    Neumann_boundary_value: Any,
+) -> Any:
     """
     This function solves 2D mass conservation in each layer.
 

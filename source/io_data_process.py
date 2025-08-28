@@ -201,11 +201,14 @@ def load_daily_temperatures(csv_path: str) -> tuple[list[float], list[float]]:
 
 
 def read_config_file(param_path: Path) -> tuple[
+    int,  # number_of_iterations
     float,  # dt_momentum
     int,  # momentum_iteration_threshold
+    float,  # dt_global_model
     float,  # dt_heat_transfer
     float,  # dt_mass_conservation
     float,  # time_end_simulation
+    float,  # write_intervals_time
     int,  # partition_shape_size
     float,  # h_mesh_step_value
     float,  # mu_value
@@ -234,6 +237,11 @@ def read_config_file(param_path: Path) -> tuple[
     dt_mass_conservation = clean_float(
         input_variables["simulation"]["dt_mass_conservation"]
     )
+    dt_global_model = clean_float(input_variables["simulation"]["dt_global_model"])
+
+    number_of_iterations = clean_int(
+        input_variables["simulation"]["number_of_iterations"]
+    )
 
     momentum_iteration_threshold = clean_int(
         input_variables["simulation"]["momentum_iteration_threshold"]
@@ -241,6 +249,10 @@ def read_config_file(param_path: Path) -> tuple[
 
     time_end_simulation = clean_float(
         input_variables["simulation"]["time_end_simulation"]
+    )
+
+    write_intervals_time = clean_float(
+        input_variables["simulation"]["write_intervals_time"]
     )
 
     partition_shape_size = clean_int(input_variables["grid"]["partition_shape_size"])
@@ -283,11 +295,14 @@ def read_config_file(param_path: Path) -> tuple[
     g_sin = np.sin(slope_radian) * 9.81
 
     return (
+        number_of_iterations,
         dt_momentum,
         momentum_iteration_threshold,
+        dt_global_model,
         dt_heat_transfer,
         dt_mass_conservation,
         time_end_simulation,
+        write_intervals_time,
         partition_shape_size,
         h_mesh_step_value,
         mu_value,
@@ -498,14 +513,28 @@ def initiate_layers_variables(
 
 
 def write_tif_file(
-    array: Any, output_file_name: str, iteration: int, output_folder_path: str
+    array: Any, output_file_name: str, time_label: float, output_folder_path: str
 ) -> None:
     """Write a lue array to a .tif file using lfr.to_gdal."""
 
     os.makedirs(output_folder_path, exist_ok=True)
 
     output_path = os.path.join(
-        output_folder_path, f"{output_file_name}-{iteration}.tif"
+        output_folder_path, f"{output_file_name}-{time_label}.tif"
+    )
+
+    lfr.to_gdal(array, output_path)
+
+
+def save_tif_file(
+    array: Any, output_file_name: str, time_label: float, output_folder_path: Path
+) -> None:
+    """Write a lue array to a .tif file using lfr.to_gdal."""
+
+    os.makedirs(output_folder_path, exist_ok=True)
+
+    output_path: str = os.path.join(
+        output_folder_path, f"{output_file_name}-{time_label}.tif"
     )
 
     lfr.to_gdal(array, output_path)
