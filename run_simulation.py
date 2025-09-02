@@ -57,7 +57,7 @@ def main() -> None:
         days_temperature_file,
         temps_temperature_file,
         results_pathname,
-        g_sin,
+        slope_radian,
     ) = read_config_file(param_path)
 
     # ---------------------  initial information --------------------
@@ -65,7 +65,7 @@ def main() -> None:
     dx, dz, array_shape, max_h_total = read_tif_info_from_gdal(
         h_total_initial_file_name
     )
-    num_rows, num_cols = array_shape
+    # num_rows, num_cols = array_shape
 
     partition_shape: tuple[int, int] = 2 * (partition_shape_size,)
 
@@ -80,36 +80,6 @@ def main() -> None:
     #  is considered in rhs of momentum function
 
     # ---------------------  initial information --------------------
-
-    # solifluction_simulate(
-    #     dx,
-    #     dz,
-    #     num_cols,
-    #     num_rows,
-    #     max_h_total,
-    #     bed_depth_elevation,
-    #     h_total_initial_file,
-    #     mu_value,
-    #     density_value,
-    #     k_conductivity_value,
-    #     rho_c_heat_value,
-    #     dt_momentum,
-    #     dt_mass_conservation,
-    #     dt_heat_transfer,
-    #     write_intervals_time,
-    #     momentum_iteration_threshold,
-    #     time_end_simulation,
-    #     heat_transfer_warmup,
-    #     heat_transfer_warmup_iteration,
-    #     h_mesh_step_value,
-    #     g_sin,
-    #     nu_x,
-    #     nu_z,
-    #     days_temperature_file,
-    #     temps_temperature_file,
-    #     partition_shape,
-    #     results_pathname,
-    # )
 
     solifluction(
         array_shape=array_shape,
@@ -133,7 +103,7 @@ def main() -> None:
         density_value=density_value,
         k_conductivity_value=k_conductivity_value,
         rho_c_heat_value=rho_c_heat_value,
-        g_sin=g_sin,
+        slope_radian=slope_radian,
         nu_x=nu_x,
         nu_z=nu_z,
         days_temperature_file=days_temperature_file,

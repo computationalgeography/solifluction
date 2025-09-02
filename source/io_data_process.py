@@ -221,7 +221,7 @@ def read_config_file(param_path: Path) -> tuple[
     list[float],  # days_temperature_file
     list[float],  # temps_temperature_file
     str,  # results_pathname
-    float,  # g_sin
+    float,  # slope_radian
 ]:
 
     input_variables: ConfigParser = load_config(param_path)
@@ -292,7 +292,7 @@ def read_config_file(param_path: Path) -> tuple[
         raise ValueError(f"Missing results path: {err}") from err
 
     slope_radian = clean_float(input_variables["simulation"]["alfa_slope"])
-    g_sin = np.sin(slope_radian) * 9.81
+    # g_sin = np.sin(slope_radian) * 9.81
 
     return (
         number_of_iterations,
@@ -315,7 +315,7 @@ def read_config_file(param_path: Path) -> tuple[
         days_temperature_file,
         temps_temperature_file,
         results_pathname,
-        g_sin,
+        slope_radian,
     )
 
 
@@ -371,10 +371,15 @@ def initiate_layers_variables(
     print("initiate_initial_layers_variables is in run")
 
     num_layers: int = int(
-        np.ceil(max_h_total - bed_depth_elevation)
-        / h_mesh_step_value
+        np.ceil((max_h_total - bed_depth_elevation) / h_mesh_step_value)
         # np.ceil(max_h_total - bed_depth_elevation) / h_mesh_step_value + 1
     )
+
+    print("max_h_total: ", max_h_total)
+    print("h_mesh_step_value: ", h_mesh_step_value)
+    print("bed_depth_elevation: ", bed_depth_elevation)
+
+    print("num_layers: ", num_layers)
 
     h_total_initial = lfr.from_gdal(
         h_total_initial_file, partition_shape=partition_shape
@@ -526,15 +531,39 @@ def write_tif_file(
     lfr.to_gdal(array, output_path)
 
 
-def save_tif_file(
-    array: Any, output_file_name: str, time_label: float, output_folder_path: Path
-) -> None:
-    """Write a lue array to a .tif file using lfr.to_gdal."""
+# def save_tif_file(
+#     array: Any, output_file_name: str, time_label: float, output_folder_path: Path
+# ) -> None:
+#     """Write a lue array to a .tif file using lfr.to_gdal."""
 
-    os.makedirs(output_folder_path, exist_ok=True)
+#     os.makedirs(output_folder_path, exist_ok=True)
 
-    output_path: str = os.path.join(
-        output_folder_path, f"{output_file_name}-{time_label}.tif"
+#     output_path: str = os.path.join(
+#         output_folder_path, f"{output_file_name}-{time_label}.tif"
+#     )
+
+#     lfr.to_gdal(array, output_path)
+
+
+def save_u_x_tem_time(u_x_tem_time, filename="u_x_tem_time.csv") -> None:
+    """
+    Save simulation results surface u_x and temperature in time to CSV file.
+
+    Parameters
+    ----------
+    filename : str
+        Output CSV file name.
+    """
+    data = np.array(u_x_tem_time)
+
+    print("Data shape:", data.shape)
+    print("Data type:", data.dtype)
+
+    np.savetxt(
+        filename,
+        data,
+        delimiter=",",
+        header="time,surface_temp,u_x_50_50",
+        comments="",
+        fmt="%.10e",
     )
-
-    lfr.to_gdal(array, output_path)
