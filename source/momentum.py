@@ -401,199 +401,211 @@ def momentum_ux(
     return phi
 
 
-# def momentum_ux_steady_state(
-#     phi: Any,
-#     phase_state: Any,
-#     dx: float,
-#     dz: float,
-#     lue_u_x: Any,
-#     lue_u_z: Any,
-#     nu_x: float,
-#     nu_z: float,
-#     rhs: Any,
-#     h_mesh: Any,
-#     boundary_loc: Any,
-#     boundary_type: Any,
-#     Dirichlet_boundary_value: Any,  # noqa: N803
-#     Neumann_boundary_value: Any,  # noqa: N803
-# ) -> Any:
+def momentum_ux_steady_state(
+    phi: Any,
+    phase_state: Any,
+    dx: float,
+    dz: float,
+    lue_u_x: Any,
+    lue_u_z: Any,
+    nu_x: float,
+    nu_z: float,
+    rhs: Any,
+    h_mesh: Any,
+    boundary_loc: Any,
+    boundary_type: Any,
+    Dirichlet_boundary_value: Any,  # noqa: N803
+    Neumann_boundary_value: Any,  # noqa: N803
+) -> Any:
 
-#     # lue_u_x : phi
-#     # lue_u_y : 0
-#     # nu_x : +(mu_mesh/gama_soil_mesh)
-#     # rhs_g_sin : g*sin(alfa)
-#     # gama_prime_mesh: (gama_soil/cos(alfa))-(gama_water*cos(alfa))
-#     # rhs : g*sin(alfa) - ((gama_soil/cos(alfa))-(gama_water*cos(alfa)))*dh/dx
+    # It is assumed that ∂u/∂t = 0 as it is negligible
 
-#     # kernel_i_j = np.array(
-#     #     [
-#     #         [0, 0, 0],
-#     #         [0, 1, 0],
-#     #         [0, 0, 0],
-#     #     ],
-#     #     dtype=np.uint8,
-#     # )
+    # lue_u_x : phi
+    # lue_u_y : 0
+    # nu_x : +(mu_mesh/gama_soil_mesh)
+    # rhs_g_sin : g*sin(alfa)
+    # gama_prime_mesh: (gama_soil/cos(alfa))-(gama_water*cos(alfa))
+    # rhs : g*sin(alfa) - ((gama_soil/cos(alfa))-(gama_water*cos(alfa)))*dh/dx
 
-#     dt: float = 1
+    dt: float = 1
 
-#     # kernel_im1_j   i-1, j
-#     kernel_im1_j: NDArray[np.uint8] = np.array(
-#         [
-#             [0, 0, 0],
-#             [1, 0, 0],
-#             [0, 0, 0],
-#         ],
-#         dtype=np.uint8,
-#     )
+    # kernel_im1_j   i-1, j
+    kernel_im1_j: NDArray[np.uint8] = np.array(
+        [
+            [0, 0, 0],
+            [1, 0, 0],
+            [0, 0, 0],
+        ],
+        dtype=np.uint8,
+    )
 
-#     """
-#     # kernel_i_jm1   i, j-1
-#     kernel_i_jm1 = np.array(
-#         [
-#             [0, 0, 0],
-#             [0, 0, 0],
-#             [0, 1, 0],
-#         ],
-#         dtype=np.uint8,
-#     )
-#     """
+    """
+    # kernel_i_jm1   i, j-1
+    kernel_i_jm1 = np.array(
+        [
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 1, 0],
+        ],
+        dtype=np.uint8,
+    )
+    """
 
-#     # kernel_i_jm1   i, j-1
-#     kernel_i_jm1: NDArray[np.uint8] = np.array(
-#         [
-#             [0, 1, 0],
-#             [0, 0, 0],
-#             [0, 0, 0],
-#         ],
-#         dtype=np.uint8,
-#     )
+    # kernel_i_jm1   i, j-1
+    kernel_i_jm1: NDArray[np.uint8] = np.array(
+        [
+            [0, 1, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+        ],
+        dtype=np.uint8,
+    )
 
-#     # kernel_ip1_j   i+1, j
-#     kernel_ip1_j: NDArray[np.uint8] = np.array(
-#         [
-#             [0, 0, 0],
-#             [0, 0, 1],
-#             [0, 0, 0],
-#         ],
-#         dtype=np.uint8,
-#     )
+    # kernel_ip1_j   i+1, j
+    kernel_ip1_j: NDArray[np.uint8] = np.array(
+        [
+            [0, 0, 0],
+            [0, 0, 1],
+            [0, 0, 0],
+        ],
+        dtype=np.uint8,
+    )
 
-#     """
-#     # kernel_i_jp1   i, j+1
-#     kernel_i_jp1 = np.array(
-#         [
-#             [0, 1, 0],
-#             [0, 0, 0],
-#             [0, 0, 0],
-#         ],
-#         dtype=np.uint8,
-#     )
-#     """
+    """
+    # kernel_i_jp1   i, j+1
+    kernel_i_jp1 = np.array(
+        [
+            [0, 1, 0],
+            [0, 0, 0],
+            [0, 0, 0],
+        ],
+        dtype=np.uint8,
+    )
+    """
 
-#     # kernel_i_jp1   i, j+1
-#     kernel_i_jp1: NDArray[np.uint8] = np.array(
-#         [
-#             [0, 0, 0],
-#             [0, 0, 0],
-#             [0, 1, 0],
-#         ],
-#         dtype=np.uint8,
-#     )
+    # kernel_i_jp1   i, j+1
+    kernel_i_jp1: NDArray[np.uint8] = np.array(
+        [
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 1, 0],
+        ],
+        dtype=np.uint8,
+    )
 
-#     # coeff_map_i_j = (
-#     #     1
-#     #     + (-(dt / dx) * lfr.abs(lue_u_x))
-#     #     + (-(dt / dy) * lfr.abs(lue_u_y))
-#     #     + (2 * (dt / (dx**2)) * nu_x)
-#     #     + (2 * (dt / (dy**2)) * nu_y)
-#     # )
+    # coeff_map_i_j = (
+    #     1
+    #     + (-(dt / dx) * lfr.abs(lue_u_x))
+    #     + (-(dt / dy) * lfr.abs(lue_u_y))
+    #     + (2 * (dt / (dx**2)) * nu_x)
+    #     + (2 * (dt / (dy**2)) * nu_y)
+    # )
 
-#     # coeff_map_i_j: Any = (
-#     #     # 1  # check this   # This term is omitted since ∂u/∂t = 0 in the steady-state case
-#     #     +(-(dt / dx) * lfr.abs(lue_u_x))
-#     #     + (-(dt / dz) * lfr.abs(lue_u_z))
-#     #     + (2 * (dt / (dx**2)) * nu_x)
-#     #     + (2 * (dt / (dz**2)) * nu_z)
-#     # )
+    # coeff_map_i_j: Any = (
+    #     # 1  # check this   # This term is omitted since ∂u/∂t = 0 in the steady-state case
+    #     +(-(dt / dx) * lfr.abs(lue_u_x))
+    #     + (-(dt / dz) * lfr.abs(lue_u_z))
+    #     + (2 * (dt / (dx**2)) * nu_x)
+    #     + (2 * (dt / (dz**2)) * nu_z)
+    # )
 
-#     coeff_map_i_j: Any = (
-#         (-(dt / dx) * lfr.abs(lue_u_x))
-#         + (-(dt / dz) * lfr.abs(lue_u_z))
-#         + (2 * (dt / (dx**2)) * nu_x)
-#         + (2 * (dt / (dz**2)) * nu_z)
-#     )
+    coeff_map_i_j: Any = (
+        (-(dt / dx) * lfr.abs(lue_u_x))
+        + (-(dt / dz) * lfr.abs(lue_u_z))
+        + (2 * (dt / (dx**2)) * nu_x)
+        + (2 * (dt / (dz**2)) * nu_z)
+    )
 
-#     coeff_map_im1_j: Any = lfr.where(
-#         lue_u_x >= 0,
-#         ((dt / dx) * lfr.abs(lue_u_x)) + (-(dt / (dx**2)) * nu_x),
-#         (-(dt / (dx**2)) * nu_x),
-#     )
+    coeff_map_im1_j: Any = lfr.where(
+        lue_u_x >= 0,
+        ((dt / dx) * lfr.abs(lue_u_x)) + (-(dt / (dx**2)) * nu_x),
+        (-(dt / (dx**2)) * nu_x),
+    )
 
-#     coeff_map_ip1_j: Any = lfr.where(
-#         lue_u_x < 0,
-#         ((dt / dx) * lfr.abs(lue_u_x)) + (-(dt / (dx**2)) * nu_x),
-#         (-(dt / (dx**2)) * nu_x),
-#     )
+    coeff_map_ip1_j: Any = lfr.where(
+        lue_u_x < 0,
+        ((dt / dx) * lfr.abs(lue_u_x)) + (-(dt / (dx**2)) * nu_x),
+        (-(dt / (dx**2)) * nu_x),
+    )
 
-#     coeff_map_i_jm1: Any = lfr.where(
-#         lue_u_z >= 0,
-#         ((dt / dz) * lfr.abs(lue_u_z)) + (-(dt / (dz**2)) * nu_z),
-#         (-(dt / (dz**2)) * nu_z),
-#     )
+    coeff_map_i_jm1: Any = lfr.where(
+        lue_u_z >= 0,
+        ((dt / dz) * lfr.abs(lue_u_z)) + (-(dt / (dz**2)) * nu_z),
+        (-(dt / (dz**2)) * nu_z),
+    )
 
-#     coeff_map_i_jp1: Any = lfr.where(
-#         lue_u_z < 0,
-#         ((dt / dz) * lfr.abs(lue_u_z)) + (-(dt / (dz**2)) * nu_z),
-#         (-(dt / (dz**2)) * nu_z),
-#     )
+    coeff_map_i_jp1: Any = lfr.where(
+        lue_u_z < 0,
+        ((dt / dz) * lfr.abs(lue_u_z)) + (-(dt / (dz**2)) * nu_z),
+        (-(dt / (dz**2)) * nu_z),
+    )
 
-#     # NOTE: coeff_<.> should be implemented on boundaries, for instance on boundary_tpe
-#     # 1 (left boundary) phi_i-1,j is located outside of domain and we need
-#     # forward discretization
-#     # For now this implementation is ignored as we impose certain boundary conditions
-#     # on the boundaries which overwrite phi on the boundaries but in the future
-#     # this should be considered and for each boundary use exclusive discretization
+    # NOTE: coeff_<.> should be implemented on boundaries, for instance on boundary_type
+    # 1 (left boundary) phi_i-1,j is located outside of domain and we need
+    # forward discretization
+    # For now this implementation is ignored as we impose certain boundary conditions
+    # on the boundaries which overwrite phi on the boundaries but in the future
+    # this should be considered and for each boundary use exclusive discretization
 
-#     phi_all_internal_domain_i_j: Any = -(
-#         (coeff_map_i_j * phi)  # (coeff_map_i_j * lfr.focal_sum(solution, kernel_i_j))
-#         + (coeff_map_im1_j * lfr.focal_sum(phi, kernel_im1_j))
-#         + (coeff_map_i_jm1 * lfr.focal_sum(phi, kernel_i_jm1))
-#         + (coeff_map_ip1_j * lfr.focal_sum(phi, kernel_ip1_j))
-#         + (coeff_map_i_jp1 * lfr.focal_sum(phi, kernel_i_jp1))
-#         + (dt * rhs)
-#     )
+    phi_all_internal_domain_i_j: Any = (
+        -(
+            (coeff_map_im1_j * lfr.focal_sum(phi, kernel_im1_j))
+            + (coeff_map_i_jm1 * lfr.focal_sum(phi, kernel_i_jm1))
+            + (coeff_map_ip1_j * lfr.focal_sum(phi, kernel_ip1_j))
+            + (coeff_map_i_jp1 * lfr.focal_sum(phi, kernel_i_jp1))
+            + (dt * rhs)
+        )
+        / coeff_map_i_j
+    )
 
-#     # phase_state: 0 solid  --> (frozen soil), 1 --> (fluid or unfrozen), now vegetation
-#     # is ignored in phase_state but it is considered in vegetation_vol_fraction
+    print("rhs:", lfr.to_numpy(rhs))
+    print("coeff_map_i_j:", lfr.to_numpy(coeff_map_i_j))
 
-#     phi_internal: Any = lfr.where(
-#         (phase_state != 0) & (h_mesh > 0),  # fluid or unfrozen
-#         phi_all_internal_domain_i_j,
-#         0,
-#     )
+    print(
+        "coeff_map_im1_j + ...:",
+        lfr.to_numpy(
+            (coeff_map_im1_j * lfr.focal_sum(phi, kernel_im1_j))
+            + (coeff_map_i_jm1 * lfr.focal_sum(phi, kernel_i_jm1))
+            + (coeff_map_ip1_j * lfr.focal_sum(phi, kernel_ip1_j))
+            + (coeff_map_i_jp1 * lfr.focal_sum(phi, kernel_i_jp1))
+        ),
+    )
 
-#     phi = boundary_set(
-#         phi_internal,
-#         boundary_loc,
-#         boundary_type,
-#         Dirichlet_boundary_value,
-#         Neumann_boundary_value,
-#         dx,
-#         dz,
-#     )
+    print("phi_all_internal_domain_i_j: ", lfr.to_numpy(phi_all_internal_domain_i_j))
 
-#     # ----------------
+    input("Enter to continue ...")
 
-#     # phi_u_x_numpy = lfr.to_numpy(phi)
-#     # print(
-#     #     "inside momentum_ux function phi_u_x_numpy[10,10]",
-#     #     phi_u_x_numpy[10, 10],
-#     # )
+    # phase_state: 0 solid  --> (frozen soil), 1 --> (fluid or unfrozen), now vegetation
+    # is ignored in phase_state but it is considered in vegetation_vol_fraction
 
-#     # rhs_numpy = lfr.to_numpy(rhs)
-#     # print(
-#     #     "inside momentum_ux function rhs_numpy[10,10]",
-#     #     rhs_numpy[10, 10],
-#     # )
+    phi_internal: Any = lfr.where(
+        (phase_state != 0) & (h_mesh > 0),  # fluid or unfrozen
+        phi_all_internal_domain_i_j,
+        0,
+    )
 
-#     return phi
+    phi = boundary_set(
+        phi_internal,
+        boundary_loc,
+        boundary_type,
+        Dirichlet_boundary_value,
+        Neumann_boundary_value,
+        dx,
+        dz,
+    )
+
+    # ----------------
+
+    # phi_u_x_numpy = lfr.to_numpy(phi)
+    # print(
+    #     "inside momentum_ux function phi_u_x_numpy[10,10]",
+    #     phi_u_x_numpy[10, 10],
+    # )
+
+    # rhs_numpy = lfr.to_numpy(rhs)
+    # print(
+    #     "inside momentum_ux function rhs_numpy[10,10]",
+    #     rhs_numpy[10, 10],
+    # )
+
+    return phi

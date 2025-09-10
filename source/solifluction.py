@@ -22,7 +22,7 @@ from source.io_data_process import (
     write_tif_file,
 )
 from source.layer import Layer
-from source.momentum import momentum_ux
+from source.momentum import momentum_ux, momentum_ux_steady_state
 from source.phase_detect import phase_detect_from_temperature
 from source.viscosity_calc import viscosity_exp_temp
 from source.vof import calculate_total_h, h_mesh_assign, mass_conservation_2D_vof
@@ -187,6 +187,19 @@ def initialize_solifluction(
     for layer_id in range(1, num_layers):
 
         layer_list[layer_id].T = (layer_id / num_layers) * surface_temperature_lue
+
+    # Initialize u_x with a small non-zero value for numerical stability
+
+    initial_u_x_lue = lfr.create_array(
+        array_shape,
+        dtype=np.float64,
+        fill_value=1e-10,
+        partition_shape=partition_shape,
+    )
+
+    for layer_id in range(1, num_layers):
+
+        layer_list[layer_id].u_x = initial_u_x_lue
 
     return (
         layer_list,
@@ -384,10 +397,20 @@ def simulate_solifluction(
 
             # a, b: 2e13, 0.4605 (T_data = ([0, 5]), mu_data([2e13, 2e12]))
             # a, b: 2e13, 0.9210 (T_data = ([0, 5]), mu_data([2e13, 2e11]))
+            # a, b: 2e12, 0.9210 (T_data = ([0, 5]), mu_data([2e12, 2e10]))
+            # a, b: 2e14, 1.8421 (T_data = ([0, 5]), mu_data([2e14, 2e10]))
+
+            # layer_list[layer_id].mu_soil = viscosity_exp_temp(
+            #     layer_list[layer_id].T, 2e13, 0.9210
+            # )
 
             layer_list[layer_id].mu_soil = viscosity_exp_temp(
-                layer_list[layer_id].T, 2e13, 0.9210
+                layer_list[layer_id].T, 2e12, 0.9210
             )
+
+            # layer_list[layer_id].mu_soil = viscosity_exp_temp(
+            #     layer_list[layer_id].T, 2e14, 1.8421
+            # )
 
             # gama_prim_surface: float = (2610 - 1000) * 9.81
             gama_prim_surface: float = (
@@ -477,7 +500,7 @@ def simulate_solifluction(
 
             # layer_list[layer_id].u_x = momentum_ux_steady_state(
             #     layer_list[layer_id].u_x,
-            #     phase_state,  # phase_state_initial,
+            #     phase_state,
             #     dx,
             #     dz,
             #     layer_list[layer_id].u_x,
@@ -1004,7 +1027,7 @@ class Solifluction(lfr.Model):
                 )
 
                 write_tif_file(
-                    self.layer_list[layer_id].u_x,
+                    self.layer_list[layer_id].T,
                     f"temp_l_{layer_id}_itr",
                     iteration,
                     self.results_path,
