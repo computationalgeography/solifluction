@@ -10,10 +10,10 @@ from typing import Any
 import lue.framework as lfr
 import numpy as np
 
-from source.derivatives_discretization import dx_upwind, second_derivatives_in_y
-from source.heat_transfer import compute_temperature_1D_in_y
-from source.interpolation import interpolate_temperature
-from source.io_data_process import (
+from .derivatives_discretization import dx_upwind, second_derivatives_in_y
+from .heat_transfer import compute_temperature_1D_in_y
+from .interpolation import interpolate_temperature
+from .io_data_process import (
     convert_numpy_to_lue,
     create_zero_numpy_array,
     default_boundary_type,
@@ -21,11 +21,11 @@ from source.io_data_process import (
     save_u_x_tem_time,
     write_tif_file,
 )
-from source.layer import Layer
-from source.momentum import momentum_ux, momentum_ux_steady_state
-from source.phase_detect import phase_detect_from_temperature
-from source.viscosity_calc import viscosity_exp_temp
-from source.vof import calculate_total_h, h_mesh_assign, mass_conservation_2D_vof
+from .layer import Layer
+from .momentum import momentum_ux, momentum_ux_steady_state
+from .phase_detect import phase_detect_from_temperature
+from .viscosity_calc import viscosity_exp_temp
+from .vof import calculate_total_h, h_mesh_assign, mass_conservation_2D_vof
 
 # from source.boundary_condition import boundary_set
 

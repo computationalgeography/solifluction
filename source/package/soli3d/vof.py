@@ -3,7 +3,7 @@ from typing import Any
 import lue.framework as lfr
 import numpy as np
 
-from source.boundary_condition import boundary_set
+from .boundary_condition import boundary_set
 
 
 def mass_conservation_2D_vof(

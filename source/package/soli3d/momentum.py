@@ -4,8 +4,8 @@ import lue.framework as lfr
 import numpy as np
 from numpy.typing import NDArray
 
-import source.derivatives_discretization as fdm
-from source.boundary_condition import boundary_set
+# import .derivatives_discretization as fdm
+from .boundary_condition import boundary_set
 
 # Eq: d_phi/d_t + (u_x * d_phi/d_x) + (u_z * d_phi/d_z) + (nu_x * d2_phi/d_x2)
 #     + (nu_z * d2_phi/d_z2) = rhs

@@ -1,10 +1,10 @@
 import sys
 from pathlib import Path
 
-from source.io_data_process import read_config_file, read_tif_info_from_gdal
+from soli3d.io_data_process import read_config_file, read_tif_info_from_gdal
 
 # from source.solifluction import solifluction_simulate
-from source.solifluction import solifluction
+from soli3d.solifluction import solifluction
 
 
 def main() -> None:

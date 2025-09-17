@@ -1,10 +1,6 @@
 import lue.framework as lfr
 
-from source.derivatives_discretization import (
-    dy_backward,
-    dy_upwind,
-    second_derivatives_in_y,
-)
+from .derivatives_discretization import dy_backward, dy_upwind, second_derivatives_in_y
 
 
 def phase_heat_coeff(T, D_T, k_f, k_u, c_f, c_u, W, W_u, L, rho_b):

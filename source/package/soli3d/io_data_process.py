@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 
 from pathlib import Path
 
-from source.config import load_config
-from source.layer import Layer
+from .config import load_config
+from .layer import Layer
 
 # from typing import Type
 
