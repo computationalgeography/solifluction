@@ -3,6 +3,7 @@
 # import os.path
 # import sys
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -18,11 +19,13 @@ from .io_data_process import (
     create_zero_numpy_array,
     default_boundary_type,
     initiate_layers_variables,
+    read_config_file,
+    read_tif_info_from_gdal,
     save_u_x_tem_time,
     write_tif_file,
 )
 from .layer import Layer
-from .momentum import momentum_ux, momentum_ux_steady_state
+from .momentum import momentum_ux  # momentum_ux_steady_state
 from .phase_detect import phase_detect_from_temperature
 from .viscosity_calc import viscosity_exp_temp
 from .vof import calculate_total_h, h_mesh_assign, mass_conservation_2D_vof
@@ -215,6 +218,63 @@ def initialize_solifluction(
     )
 
 
+def heat_transfer_with_permafrost(
+    layer_list: Any,
+    num_layers: int,
+    temperature_bed: Any,
+    surface_temperature_value: float,
+    surface_temperature_lue: Any,
+    dt_heat_transfer: float,
+) -> None:
+
+    layer_list[0].T = temperature_bed
+    layer_list[num_layers - 1].T = surface_temperature_lue
+
+    for layer_id in range(1, num_layers - 1):
+        layer_list[layer_id].T = compute_temperature_1D_in_y(
+            layer_list[layer_id].k_conductivity_heat,
+            layer_list[layer_id + 1].k_conductivity_heat,
+            layer_list[layer_id - 1].k_conductivity_heat,
+            layer_list[layer_id].rho_c_heat,
+            layer_list[layer_id].T,
+            layer_list[layer_id + 1].T,
+            layer_list[layer_id - 1].T,
+            dt_heat_transfer,
+            layer_list[layer_id].h_mesh,
+            layer_list[layer_id - 1].h_mesh,
+            surface_temperature_value,
+        )
+
+
+def heat_transfer_no_permafrost(
+    layer_list: Any,
+    num_layers: int,
+    temperature_bed: Any,
+    surface_temperature_value: float,
+    surface_temperature_lue: Any,
+    dt_heat_transfer: float,
+) -> None:
+
+    layer_list[num_layers - 1].T = surface_temperature_lue
+
+    for layer_id in range(1, num_layers - 1):
+        layer_list[layer_id].T = compute_temperature_1D_in_y(
+            layer_list[layer_id].k_conductivity_heat,
+            layer_list[layer_id + 1].k_conductivity_heat,
+            layer_list[layer_id - 1].k_conductivity_heat,
+            layer_list[layer_id].rho_c_heat,
+            layer_list[layer_id].T,
+            layer_list[layer_id + 1].T,
+            layer_list[layer_id - 1].T,
+            dt_heat_transfer,
+            layer_list[layer_id].h_mesh,
+            layer_list[layer_id - 1].h_mesh,
+            surface_temperature_value,
+        )
+
+    layer_list[0].T = layer_list[1].T  # it assumes that dT/dy =0 in bottom boundary
+
+
 def simulate_solifluction(
     array_shape: Shape,
     partition_shape: Shape,
@@ -240,6 +300,7 @@ def simulate_solifluction(
     surface_temperature: float,
     model_total_iteration: int,
     surface_density: float,
+    heat_transfer_func: callable,
 ) -> tuple[list[Layer], int]:
 
     # if heat_transfer_warmup:
@@ -342,29 +403,38 @@ def simulate_solifluction(
             partition_shape=partition_shape,
         )
 
-        layer_list[0].T = temperature_bed
-        layer_list[num_layers - 1].T = surface_temperature_lue
+        heat_transfer_func(
+            layer_list,
+            num_layers,
+            temperature_bed,
+            surface_temperature,
+            surface_temperature_lue,
+            dt_heat_transfer,
+        )
 
-        for layer_id in range(1, num_layers - 1):
+        # ##### layer_list[0].T = temperature_bed
+        # ##### layer_list[num_layers - 1].T = surface_temperature_lue
 
-            layer_list[layer_id].T = compute_temperature_1D_in_y(
-                layer_list[layer_id].k_conductivity_heat,
-                layer_list[layer_id + 1].k_conductivity_heat,
-                layer_list[layer_id - 1].k_conductivity_heat,
-                layer_list[layer_id].rho_c_heat,
-                layer_list[layer_id].T,
-                layer_list[layer_id + 1].T,
-                layer_list[layer_id - 1].T,
-                dt_heat_transfer,
-                layer_list[layer_id].h_mesh,
-                layer_list[layer_id - 1].h_mesh,
-                surface_temperature,
-            )
+        # #####for layer_id in range(1, num_layers - 1):
 
-            # print(
-            #     "type of layer_list[layer_id].T before to numpy :",
-            #     type(layer_list[layer_id].T),
-            # )
+        # #####    layer_list[layer_id].T = compute_temperature_1D_in_y(
+        # #####        layer_list[layer_id].k_conductivity_heat,
+        # #####        layer_list[layer_id + 1].k_conductivity_heat,
+        # #####        layer_list[layer_id - 1].k_conductivity_heat,
+        # #####        layer_list[layer_id].rho_c_heat,
+        # #####        layer_list[layer_id].T,
+        # #####        layer_list[layer_id + 1].T,
+        # #####        layer_list[layer_id - 1].T,
+        # #####        dt_heat_transfer,
+        # #####        layer_list[layer_id].h_mesh,
+        # #####        layer_list[layer_id - 1].h_mesh,
+        # #####        surface_temperature,
+        # #####    )
+
+        # print(
+        #     "type of layer_list[layer_id].T before to numpy :",
+        #     type(layer_list[layer_id].T),
+        # )
 
         # for layer_id in range(0, num_layers):
 
@@ -879,6 +949,19 @@ class Solifluction(lfr.Model):
         self.h_total = h_total_initial
         self.d2u_x_dy2 = d2u_x_dy2_initial
 
+        # Choose the heat transfer function based on the permafrost flag
+        # self.permafrost: bool = True
+        # self.permafrost: bool = False
+
+        if self.permafrost:
+            self.heat_transfer_func: Callable[
+                [Any, int, Any, float, Any, float], None
+            ] = heat_transfer_with_permafrost
+        else:
+            self.heat_transfer_func: Callable[
+                [Any, int, Any, float, Any, float], None
+            ] = heat_transfer_no_permafrost
+
     def simulate(self, iteration: int) -> Any:
         # self.generation = next_generation(self.generation)
         # self.save_generation(self.generation, iteration)
@@ -920,6 +1003,7 @@ class Solifluction(lfr.Model):
             surface_temperature,
             self.model_total_iteration,
             self.density_value,
+            self.heat_transfer_func,
         )
 
         if iteration % self.write_intervals_time == 0:
@@ -1065,7 +1149,6 @@ def solifluction(
     dt_global_model: float,
     dt_heat_transfer: float,
     dt_mass_conservation: float,
-    time_end_simulation: float,
     write_intervals_time: float,
     max_h_total: float,
     bed_depth_elevation: float,
@@ -1080,6 +1163,7 @@ def solifluction(
     nu_z: float,
     days_temperature_file: list[float],
     temps_temperature_file: list[float],
+    permafrost: bool,
 ) -> None:
 
     model = Solifluction(
@@ -1093,7 +1177,6 @@ def solifluction(
     model.momentum_iteration_threshold = momentum_iteration_threshold
     model.dt_heat_transfer = dt_heat_transfer
     model.dt_mass_conservation = dt_mass_conservation
-    model.time_end_simulation = time_end_simulation
     model.write_intervals_time = write_intervals_time
     model.dx = dx
     model.dz = dz
@@ -1115,7 +1198,112 @@ def solifluction(
     model.model_total_iteration = model_total_iteration_initial
     model.u_x_tem_time = []
     model.number_of_iterations = number_of_iterations
+    model.permafrost = permafrost
 
     lfr.run_deterministic(
         model, lfr.DefaultProgressor(), nr_time_steps=number_of_iterations, rate_limit=3
+    )
+
+
+def main() -> None:
+
+    # if len(sys.argv) > 1:
+    #     param_path = Path(sys.argv[1]).resolve()
+    # else:
+    #     param_path = Path("param.txt").resolve()
+
+    # if not param_path.is_file():
+    #     print(f"Parameter file does not exist: {param_path}")
+    #     sys.exit(1)
+
+    # Find the first argument that looks like a file (not starting with "--")
+    param_path = None
+    for arg in sys.argv[1:]:
+        if not arg.startswith("--"):
+            param_path = Path(arg).resolve()
+            break
+
+    if param_path is None:
+        param_path = Path("param.txt").resolve()
+
+    if not param_path.is_file():
+        print(f"Parameter file does not exist: {param_path}")
+        sys.exit(1)
+
+    print("sys.argv =", sys.argv)
+
+    # -----  read input variables from param.txx ---------------
+
+    (
+        number_of_iterations,
+        dt_momentum,
+        momentum_iteration_threshold,
+        dt_global_model,
+        dt_heat_transfer,
+        dt_mass_conservation,
+        write_intervals_time,
+        partition_shape_size,
+        h_mesh_step_value,
+        mu_value,
+        density_value,
+        k_conductivity_value,
+        rho_c_heat_value,
+        h_total_initial_file_name,
+        heat_transfer_warmup,
+        heat_transfer_warmup_iteration,
+        days_temperature_file,
+        temps_temperature_file,
+        results_pathname,
+        slope_radian,
+        permafrost,
+    ) = read_config_file(param_path)
+
+    # ---------------------  initial information --------------------
+
+    dx, dz, array_shape, max_h_total = read_tif_info_from_gdal(
+        h_total_initial_file_name
+    )
+    # num_rows, num_cols = array_shape
+
+    partition_shape: tuple[int, int] = 2 * (partition_shape_size,)
+
+    bed_depth_elevation = 0  # it can be any value
+
+    nu_x: float = 0
+    nu_z: float = 0
+    # this is viscosity in raster dimension (dx,dz)
+    # for instance in momentum equation coefficient in
+    # nu_x *d^2u/dx^2 and nu_z *d^2u/dz^2
+    # diffusion term effect in gravity direction (y) (d^2u/dy^2)
+    #  is considered in rhs of momentum function
+
+    # ---------------------  initial information --------------------
+
+    solifluction(
+        array_shape=array_shape,
+        partition_shape=partition_shape,
+        number_of_iterations=number_of_iterations,
+        results_pathname=results_pathname,
+        dx=dx,
+        dz=dz,
+        dt_momentum=dt_momentum,
+        momentum_iteration_threshold=momentum_iteration_threshold,
+        dt_global_model=dt_global_model,
+        dt_heat_transfer=dt_heat_transfer,
+        dt_mass_conservation=dt_mass_conservation,
+        write_intervals_time=write_intervals_time,
+        max_h_total=max_h_total,
+        bed_depth_elevation=bed_depth_elevation,
+        h_mesh_step_value=h_mesh_step_value,
+        h_total_initial_file_name=h_total_initial_file_name,
+        mu_value=mu_value,
+        density_value=density_value,
+        k_conductivity_value=k_conductivity_value,
+        rho_c_heat_value=rho_c_heat_value,
+        slope_radian=slope_radian,
+        nu_x=nu_x,
+        nu_z=nu_z,
+        days_temperature_file=days_temperature_file,
+        temps_temperature_file=temps_temperature_file,
+        permafrost=permafrost,
     )

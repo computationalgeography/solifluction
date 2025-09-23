@@ -200,6 +200,22 @@ def load_daily_temperatures(csv_path: str) -> tuple[list[float], list[float]]:
     return days, temps
 
 
+def clean_bool(val: str, name: str = "unknown") -> bool:
+    value = val.split("#")[0].strip().lower()
+    true_values = ("true", "1", "yes", "y")
+    false_values = ("false", "0", "no", "n")
+
+    if value in true_values:
+        return True
+    if value in false_values:
+        return False
+
+    raise ValueError(
+        f"Invalid boolean value for '{name}': '{val}'. "
+        f"Expected one of {true_values + false_values}."
+    )
+
+
 def read_config_file(param_path: Path) -> tuple[
     int,  # number_of_iterations
     float,  # dt_momentum
@@ -207,7 +223,6 @@ def read_config_file(param_path: Path) -> tuple[
     float,  # dt_global_model
     float,  # dt_heat_transfer
     float,  # dt_mass_conservation
-    float,  # time_end_simulation
     float,  # write_intervals_time
     int,  # partition_shape_size
     float,  # h_mesh_step_value
@@ -247,11 +262,13 @@ def read_config_file(param_path: Path) -> tuple[
         input_variables["simulation"]["momentum_iteration_threshold"]
     )
 
-    time_end_simulation = clean_float(
-        input_variables["simulation"]["time_end_simulation"]
-    )
+    permafrost = clean_bool(input_variables["simulation"]["permafrost"], "permafrost")
 
-    write_intervals_time = clean_float(
+    # time_end_simulation = clean_float(
+    #     input_variables["simulation"]["time_end_simulation"]
+    # )
+
+    write_intervals_time: float = clean_float(
         input_variables["simulation"]["write_intervals_time"]
     )
 
@@ -301,7 +318,6 @@ def read_config_file(param_path: Path) -> tuple[
         dt_global_model,
         dt_heat_transfer,
         dt_mass_conservation,
-        time_end_simulation,
         write_intervals_time,
         partition_shape_size,
         h_mesh_step_value,
@@ -316,6 +332,7 @@ def read_config_file(param_path: Path) -> tuple[
         temps_temperature_file,
         results_pathname,
         slope_radian,
+        permafrost,
     )
 
 
