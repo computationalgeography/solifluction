@@ -80,4 +80,4 @@ jobs:
           # python -m unittest -v test.model_test.TestPackage.test_boundary_set
           export PYTHONPATH="${PYTHONPATH}:${GITHUB_WORKSPACE}/source/package"
           python -m unittest -v source.test.model_test.TestPackage.test_version_attribute
-          python -m unittest test.model_test -v
+          python -m unittest source.test.model_test -v
