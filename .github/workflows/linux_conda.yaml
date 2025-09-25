@@ -78,4 +78,6 @@ jobs:
           export LD_PRELOAD=$(find $CONDA_PREFIX -name libtcmalloc_minimal.so.4)
           # python -m unittest -v test.model_test.TestPackage.test_second_derivatives_in_y
           # python -m unittest -v test.model_test.TestPackage.test_boundary_set
+          export PYTHONPATH="${PYTHONPATH}:${GITHUB_WORKSPACE}/source/package"
+          python -m unittest -v source.test.model_test.TestPackage.test_version_attribute
           python -m unittest test.model_test -v
