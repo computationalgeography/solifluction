@@ -5,7 +5,17 @@ import lue.framework as lfr
 import matplotlib.pyplot as plt
 import numpy as np
 import soli3d
+from soli3d.boundary_condition import boundary_set
 from soli3d.derivatives_discretization import second_derivatives_in_y
+from soli3d.heat_transfer import compute_temperature_1D_in_y
+from soli3d.io_data_process import (
+    convert_numpy_to_lue,
+    create_zero_numpy_array,
+    default_boundary_type,
+)
+from soli3d.layer import Layer
+from soli3d.momentum import momentum_ux  # momentum_ux_steady_state
+from soli3d.vof import calculate_total_h, h_mesh_assign, mass_conservation_2D_vof
 
 # from source.boundary_condition import boundary_set
 # from source.derivatives_discretization import second_derivatives_in_y
