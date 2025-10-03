@@ -47,15 +47,30 @@ If you use this software, please cite it:
 The recommended way to set up the environment is with **Conda**.
 A ready-to-use environment file is provided in `environment/configuration/conda_environment.yml`.
 
+### Download Package
+
+Clone the repository from GitHub:
+
+```bash
+git clone https://github.com/computationalgeography/solifluction.git
+```
+
+### Navigate to the repository
+
 ```bash
 cd solifluction
+```
 
-# Create the environment
+### Create the environment
+
+```bash
 conda env create -f environment/configuration/conda_environment.yml
+```
 
-# Activate the environment
+### Activate the environment
+
+```bash
 conda activate soli3d
-
 ```
 
 ## Run
@@ -75,18 +90,18 @@ export LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4"
 Set the path to the package directory:
 
 ```bash
-export PYTHONPATH=/full/path/to/source/package:$PYTHONPATH
+export PYTHONPATH=/full/path/to/solifluction/source/package:$PYTHONPATH
 ```
 
 Run the simulation with a parameter file and specify the number of threads:
 
 ```bash
-python ../source/script/run_simulation.py --hpx:threads=<nr_threads> <path/to/param.txt>
+python path/to/solifluction/source/script/run_simulation.py --hpx:threads=<nr_threads> <path/to/param.txt>
 ```
 
 ## Test
 
-PYTHONPATH=path/to/source/package python -m unittest source.test.model_test -v
+PYTHONPATH=path/to/solifluction/source/package python -m unittest source.test.model_test -v
 
 ## License
 This project is licensed under the [MIT License](LICENSE).
