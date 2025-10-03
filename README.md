@@ -101,7 +101,17 @@ python path/to/solifluction/source/script/run_simulation.py --hpx:threads=<nr_th
 
 ## Test
 
+```bash
 PYTHONPATH=path/to/solifluction/source/package python -m unittest source.test.model_test -v
+```
+
+## Generate documentation
+
+```bash
+sphinx-build path/to/solifluction/doc $HOME/tmp/documentation
+```
+
+Point your browser at $HOME/tmp/documentation/index.html.
 
 ## License
 This project is licensed under the [MIT License](LICENSE).
