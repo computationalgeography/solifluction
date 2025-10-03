@@ -1,4 +1,4 @@
-name: lue
+name: soli3d
 channels:
 - conda-forge
 - nodefaults
