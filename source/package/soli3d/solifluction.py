@@ -27,7 +27,7 @@ from .io_data_process import (
 from .layer import Layer
 from .momentum import momentum_ux  # momentum_ux_steady_state
 from .phase_detect import phase_detect_from_temperature
-from .viscosity_calc import viscosity_exp_temp
+from .viscosity_calc import viscosity_exp_temp, viscosity_vegetation
 from .vof import calculate_total_h, h_mesh_assign, mass_conservation_2D_vof
 
 # from source.boundary_condition import boundary_set
@@ -62,6 +62,8 @@ def initialize_solifluction(
     k_conductivity_value: float,
     rho_c_heat_value: float,
     temps_temperature_file: list[float],
+    num_layer_penetrate_vegetation: float,
+    initial_surface_vegetation_fraction_file: str,
 ) -> tuple[
     list[Layer],  # layer_list,
     list[Any],  # d2u_x_dy2_initial,
@@ -204,6 +206,24 @@ def initialize_solifluction(
 
         layer_list[layer_id].u_x = initial_u_x_lue
 
+    layer_list[num_layers - 1].vegetation_vol_fraction = lfr.from_gdal(
+        initial_surface_vegetation_fraction_file, partition_shape=partition_shape
+    )
+
+    # Linearly decrease vegetation in layers below from the surface
+    for layer_id in range(
+        num_layers - 2, num_layers - 1 - num_layer_penetrate_vegetation, -1
+    ):
+        dist_from_surface = (num_layers - 1) - layer_id
+        factor_vegetation = 1 - (dist_from_surface / num_layer_penetrate_vegetation)
+        factor_vegetation = max(
+            factor_vegetation, 0.0
+        )  # Ensure it doesn’t go below zero
+
+        layer_list[layer_id].vegetation_vol_fraction = (
+            factor_vegetation * layer_list[num_layers - 1].vegetation_vol_fraction
+        )
+
     return (
         layer_list,
         d2u_x_dy2_initial,
@@ -301,6 +321,7 @@ def simulate_solifluction(
     model_total_iteration: int,
     surface_density: float,
     heat_transfer_func: callable,
+    mu_value: float,
 ) -> tuple[list[Layer], int]:
 
     # if heat_transfer_warmup:
@@ -475,7 +496,13 @@ def simulate_solifluction(
             # )
 
             layer_list[layer_id].mu_soil = viscosity_exp_temp(
-                layer_list[layer_id].T, 2e12, 0.9210
+                layer_list[layer_id].T, max_mu_value, 0.9210
+            )
+
+            layer_list[layer_id].mu_soil = viscosity_vegetation(
+                layer_list[layer_id].mu_soil,
+                1.2 * layer_list[layer_id].mu_soil,
+                layer_list[layer_id].vegetation_vol_fraction,
             )
 
             # layer_list[layer_id].mu_soil = viscosity_exp_temp(
@@ -1004,9 +1031,13 @@ class Solifluction(lfr.Model):
             self.model_total_iteration,
             self.density_value,
             self.heat_transfer_func,
+            self.mu_value,
         )
 
         if iteration % self.write_intervals_time == 0:
+
+            center_row = int(self.num_row / 2)
+            center_col = int(self.num_col / 2)
 
             for layer_id in range(0, self.num_layers):
 
