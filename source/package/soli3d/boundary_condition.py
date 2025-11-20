@@ -8,15 +8,20 @@ import lue.framework as lfr
 
 # import numpy as np
 # from numpy.typing import NDArray
-from .kernels import kernel_i_jm1, kernel_i_jp1, kernel_im1_j, kernel_ip1_j
+from .kernels import (
+    kernel_i_jm1_boundary,
+    kernel_i_jp1_boundary,
+    kernel_im1_j_boundary,
+    kernel_ip1_j_boundary,
+)
 
 
 def boundary_set(
     phi: Any,
     boundary_loc: Any,
     boundary_type: Any,
-    Dirichlet_boundary_value: Any,
-    Neumann_boundary_value: Any,
+    dirichlet_boundary_value: Any,
+    neumann_boundary_value: Any,
     dx: float,
     dz: float,
 ) -> Any:
@@ -45,11 +50,11 @@ def boundary_set(
     # boundary types are defined in "io_data_process.py/default_boundary_type function"
 
     # ---------------------------------------------------------------------------------------------
-    # phi = lfr.where(
-    #     ((boundary_loc == 1) & (boundary_type == 0)),
-    #     Dirichlet_boundary_value,
-    #     phi,
-    # )
+    phi = lfr.where(
+        ((boundary_loc == 1) & (boundary_type == 0)),
+        dirichlet_boundary_value,
+        phi,
+    )
 
     # # kernel_im1_j   i-1, j
     # kernel_im1_j: NDArray[np.uint8] = np.array(
@@ -121,13 +126,13 @@ def boundary_set(
             (boundary_loc == 1)
             & ((boundary_type == 1) | (boundary_type == 5) | (boundary_type == 6))
         ),
-        lfr.focal_sum(phi, kernel_ip1_j) - (dx * Neumann_boundary_value),
+        lfr.focal_sum(phi, kernel_ip1_j_boundary) - (dx * neumann_boundary_value),
         phi,
     )
 
     phi = lfr.where(
         ((boundary_loc == 1) & (boundary_type == 2)),
-        lfr.focal_sum(phi, kernel_i_jp1) - (dz * Neumann_boundary_value),
+        lfr.focal_sum(phi, kernel_i_jp1_boundary) - (dz * neumann_boundary_value),
         phi,
     )
 
@@ -136,13 +141,13 @@ def boundary_set(
             (boundary_loc == 1)
             & ((boundary_type == 3) | (boundary_type == 7) | (boundary_type == 8))
         ),
-        lfr.focal_sum(phi, kernel_im1_j) + (dx * Neumann_boundary_value),
+        lfr.focal_sum(phi, kernel_im1_j_boundary) + (dx * neumann_boundary_value),
         phi,
     )
 
     phi = lfr.where(
         ((boundary_loc == 1) & (boundary_type == 4)),
-        lfr.focal_sum(phi, kernel_i_jm1) + (dz * Neumann_boundary_value),
+        lfr.focal_sum(phi, kernel_i_jm1_boundary) + (dz * neumann_boundary_value),
         phi,
     )
 
