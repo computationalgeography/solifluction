@@ -27,7 +27,7 @@ from .io_data_process import (
 from .layer import Layer
 from .momentum import momentum_ux  # momentum_ux_steady_state
 from .phase_detect import phase_detect_from_temperature
-from .viscosity_calc import viscosity_exp_temp, viscosity_vegetation
+from .viscosity_calc import viscosity_exp_temp
 from .vof import calculate_total_h, h_mesh_assign, mass_conservation_2D_vof
 
 # from source.boundary_condition import boundary_set
@@ -38,6 +38,125 @@ from .vof import calculate_total_h, h_mesh_assign, mass_conservation_2D_vof
 Shape = tuple[int, int]
 
 print("sys.argv inside code source/solifluction.py =", sys.argv)
+
+
+def print_for_debug(
+    layer_list,
+    num_layers,
+    time,
+    surface_temperature,
+    u_x_tem_time,
+    h_total,
+    iteration,
+    results_path,
+    save_u_x_tem_time_fun,
+    number_of_iterations,
+) -> None:
+
+    for layer_id in range(0, num_layers):
+
+        layer_u_x_numpy = lfr.to_numpy(layer_list[layer_id].u_x)
+        print(
+            "layer_u_x_numpy[5,5]",
+            layer_u_x_numpy[5, 5],
+            "layer_id",
+            layer_id,
+        )
+
+        print(
+            "layer_u_x_numpy[5,5] (cm/year)",
+            layer_u_x_numpy[5, 5] * 3600 * 24 * 365 * 100,
+            "layer_id",
+            layer_id,
+        )
+
+        layer_h_mesh_numpy = lfr.to_numpy(layer_list[layer_id].h_mesh)
+        print(
+            "layer_h_mesh_numpy[5,5]",
+            layer_h_mesh_numpy[5, 5],
+            "layer_id",
+            layer_id,
+        )
+
+        layer_T_numpy = lfr.to_numpy(layer_list[layer_id].T)
+        print(
+            "layer_T_numpy[5,5]",
+            layer_T_numpy[5, 5],
+            "layer_id",
+            layer_id,
+        )
+
+    layer_u_x_numpy_surf = (
+        lfr.to_numpy(layer_list[num_layers - 1].u_x) * 3600 * 24 * 365 * 100
+    )
+
+    print(
+        "layer_u_x_numpy_surf[5,5]: ",
+        layer_u_x_numpy_surf[5, 5],
+    )
+
+    u_x_tem_time.append([time / 86400, surface_temperature, layer_u_x_numpy_surf[5, 5]])
+
+    print("u_x_tem_time: ", u_x_tem_time)
+
+    # save_tif_file(
+    #     self.h_total,
+    #     "h_total",
+    #     time,
+    #     self.results_path,
+    # )
+
+    write_tif_file(
+        h_total,
+        "h_total",
+        iteration,
+        results_path,
+    )
+
+    # for layer_id in range(0, self.num_layers):
+
+    #     save_tif_file(
+    #         self.layer_list[layer_id].u_x,
+    #         f"u_x_l_{layer_id}_itr_{iteration}_t",
+    #         time,
+    #         self.results_path,
+    #     )
+
+    #     save_tif_file(
+    #         self.layer_list[layer_id].T,
+    #         f"temp_l_{layer_id}_itr_{iteration}_t",
+    #         time,
+    #         self.results_path,
+    #     )
+
+    for layer_id in range(0, num_layers):
+
+        write_tif_file(
+            layer_list[layer_id].u_x,
+            f"u_x_l_{layer_id}_itr",
+            iteration,
+            results_path,
+        )
+
+        write_tif_file(
+            layer_list[layer_id].T,
+            f"temp_l_{layer_id}_itr",
+            iteration,
+            results_path,
+        )
+
+    print(
+        "-----------------write---------------",
+        "time: ",
+        time,
+        "iteration",
+        iteration,
+    )
+    # input("enter to continue ...")
+
+    if iteration == number_of_iterations:
+
+        save_u_x_tem_time_fun(u_x_tem_time, f"{results_path}/u_x_tem_time.csv")
 
 
 def is_phi_steady(phi_previous: Any, phi_current: Any, tol: float = 1e-4) -> bool:
@@ -62,8 +181,6 @@ def initialize_solifluction(
     k_conductivity_value: float,
     rho_c_heat_value: float,
     temps_temperature_file: list[float],
-    num_layer_penetrate_vegetation: float,
-    initial_surface_vegetation_fraction_file: str,
 ) -> tuple[
     list[Layer],  # layer_list,
     list[Any],  # d2u_x_dy2_initial,
@@ -206,24 +323,6 @@ def initialize_solifluction(
 
         layer_list[layer_id].u_x = initial_u_x_lue
 
-    layer_list[num_layers - 1].vegetation_vol_fraction = lfr.from_gdal(
-        initial_surface_vegetation_fraction_file, partition_shape=partition_shape
-    )
-
-    # Linearly decrease vegetation in layers below from the surface
-    for layer_id in range(
-        num_layers - 2, num_layers - 1 - num_layer_penetrate_vegetation, -1
-    ):
-        dist_from_surface = (num_layers - 1) - layer_id
-        factor_vegetation = 1 - (dist_from_surface / num_layer_penetrate_vegetation)
-        factor_vegetation = max(
-            factor_vegetation, 0.0
-        )  # Ensure it doesn’t go below zero
-
-        layer_list[layer_id].vegetation_vol_fraction = (
-            factor_vegetation * layer_list[num_layers - 1].vegetation_vol_fraction
-        )
-
     return (
         layer_list,
         d2u_x_dy2_initial,
@@ -321,7 +420,6 @@ def simulate_solifluction(
     model_total_iteration: int,
     surface_density: float,
     heat_transfer_func: callable,
-    mu_value: float,
 ) -> tuple[list[Layer], int]:
 
     # if heat_transfer_warmup:
@@ -407,6 +505,13 @@ def simulate_solifluction(
 
     # --------------- compute temperatures in internal layers --------------------------
 
+    surface_temperature_lue = lfr.create_array(
+        array_shape,
+        dtype=np.float64,
+        fill_value=surface_temperature,
+        partition_shape=partition_shape,
+    )
+
     while (
         local_heat_transfer_iteration < heat_transfer_iteration_threshold
     ):  # if abs(time - local_heat_transfer_time) >= dt_heat_transfer:
@@ -416,13 +521,6 @@ def simulate_solifluction(
         # surface_temperature = interpolate_temperature(
         #     time, days_temperature_file, temps_temperature_file
         # )
-
-        surface_temperature_lue = lfr.create_array(
-            array_shape,
-            dtype=np.float64,
-            fill_value=surface_temperature,
-            partition_shape=partition_shape,
-        )
 
         heat_transfer_func(
             layer_list,
@@ -496,13 +594,7 @@ def simulate_solifluction(
             # )
 
             layer_list[layer_id].mu_soil = viscosity_exp_temp(
-                layer_list[layer_id].T, max_mu_value, 0.9210
-            )
-
-            layer_list[layer_id].mu_soil = viscosity_vegetation(
-                layer_list[layer_id].mu_soil,
-                1.2 * layer_list[layer_id].mu_soil,
-                layer_list[layer_id].vegetation_vol_fraction,
+                layer_list[layer_id].T, 2e12, 0.9210
             )
 
             # layer_list[layer_id].mu_soil = viscosity_exp_temp(
@@ -1031,137 +1123,139 @@ class Solifluction(lfr.Model):
             self.model_total_iteration,
             self.density_value,
             self.heat_transfer_func,
-            self.mu_value,
         )
 
         if iteration % self.write_intervals_time == 0:
 
-            center_row = int(self.num_row / 2)
-            center_col = int(self.num_col / 2)
-
-            for layer_id in range(0, self.num_layers):
-
-                layer_u_x_numpy = lfr.to_numpy(self.layer_list[layer_id].u_x)
-                print(
-                    "layer_u_x_numpy[10,10]",
-                    layer_u_x_numpy[10, 10],
-                    "layer_id",
-                    layer_id,
-                )
-
-                print(
-                    "layer_u_x_numpy[10,10] (cm/year)",
-                    layer_u_x_numpy[10, 10] * 3600 * 24 * 365 * 100,
-                    "layer_id",
-                    layer_id,
-                )
-
-                print(
-                    "layer_u_x_numpy[50,50] (cm/year)",
-                    layer_u_x_numpy[50, 50] * 3600 * 24 * 365 * 100,
-                    "layer_id",
-                    layer_id,
-                )
-
-            for layer_id in range(0, self.num_layers):
-
-                layer_h_mesh_numpy = lfr.to_numpy(self.layer_list[layer_id].h_mesh)
-                print(
-                    "layer_h_mesh_numpy[10,10]",
-                    layer_h_mesh_numpy[10, 10],
-                    "layer_id",
-                    layer_id,
-                )
-
-            for layer_id in range(0, self.num_layers):
-
-                layer_T_numpy = lfr.to_numpy(self.layer_list[layer_id].T)
-                print(
-                    "layer_T_numpy[50,50]",
-                    layer_T_numpy[50, 50],
-                    "layer_id",
-                    layer_id,
-                )
-
-            layer_u_x_numpy_surf = (
-                lfr.to_numpy(self.layer_list[self.num_layers - 1].u_x)
-                * 3600
-                * 24
-                * 365
-                * 100
-            )
-
-            print(
-                "layer_u_x_numpy_surf[50,50]: ",
-                layer_u_x_numpy_surf[50, 50],
-            )
-
-            self.u_x_tem_time.append(
-                [time / 86400, surface_temperature, layer_u_x_numpy_surf[50, 50]]
-            )
-
-            print("u_x_tem_time: ", self.u_x_tem_time)
-
-            # save_tif_file(
-            #     self.h_total,
-            #     "h_total",
-            #     time,
-            #     self.results_path,
-            # )
-
-            write_tif_file(
+            print_for_debug(
+                self.layer_list,
+                self.num_layers,
+                time,
+                surface_temperature,
+                self.u_x_tem_time,
                 self.h_total,
-                "h_total",
                 iteration,
                 self.results_path,
+                save_u_x_tem_time,
+                self.number_of_iterations,
             )
 
-            # for layer_id in range(0, self.num_layers):
+        #     for layer_id in range(0, self.num_layers):
 
-            #     save_tif_file(
-            #         self.layer_list[layer_id].u_x,
-            #         f"u_x_l_{layer_id}_itr_{iteration}_t",
-            #         time,
-            #         self.results_path,
-            #     )
+        #         layer_u_x_numpy = lfr.to_numpy(self.layer_list[layer_id].u_x)
+        #         print(
+        #             "layer_u_x_numpy[5,5]",
+        #             layer_u_x_numpy[5, 5],
+        #             "layer_id",
+        #             layer_id,
+        #         )
 
-            #     save_tif_file(
-            #         self.layer_list[layer_id].T,
-            #         f"temp_l_{layer_id}_itr_{iteration}_t",
-            #         time,
-            #         self.results_path,
-            #     )
+        #         print(
+        #             "layer_u_x_numpy[5,5] (cm/year)",
+        #             layer_u_x_numpy[5, 5] * 3600 * 24 * 365 * 100,
+        #             "layer_id",
+        #             layer_id,
+        #         )
 
-            for layer_id in range(0, self.num_layers):
+        #     for layer_id in range(0, self.num_layers):
 
-                write_tif_file(
-                    self.layer_list[layer_id].u_x,
-                    f"u_x_l_{layer_id}_itr",
-                    iteration,
-                    self.results_path,
-                )
+        #         layer_h_mesh_numpy = lfr.to_numpy(self.layer_list[layer_id].h_mesh)
+        #         print(
+        #             "layer_h_mesh_numpy[5,5]",
+        #             layer_h_mesh_numpy[5, 5],
+        #             "layer_id",
+        #             layer_id,
+        #         )
 
-                write_tif_file(
-                    self.layer_list[layer_id].T,
-                    f"temp_l_{layer_id}_itr",
-                    iteration,
-                    self.results_path,
-                )
+        #     for layer_id in range(0, self.num_layers):
 
-            print(
-                "-----------------write---------------",
-                "time: ",
-                time,
-                "iteration",
-                iteration,
-            )
-            # input("enter to continue ...")
+        #         layer_T_numpy = lfr.to_numpy(self.layer_list[layer_id].T)
+        #         print(
+        #             "layer_T_numpy[5,5]",
+        #             layer_T_numpy[5, 5],
+        #             "layer_id",
+        #             layer_id,
+        #         )
 
-        if iteration == self.number_of_iterations:
+        #     layer_u_x_numpy_surf = (
+        #         lfr.to_numpy(self.layer_list[self.num_layers - 1].u_x)
+        #         * 3600
+        #         * 24
+        #         * 365
+        #         * 100
+        #     )
 
-            save_u_x_tem_time(
-                self.u_x_tem_time, f"{self.results_path}/u_x_tem_time.csv"
-            )
+        #     print(
+        #         "layer_u_x_numpy_surf[5,5]: ",
+        #         layer_u_x_numpy_surf[5, 5],
+        #     )
+
+        #     self.u_x_tem_time.append(
+        #         [time / 86400, surface_temperature, layer_u_x_numpy_surf[5, 5]]
+        #     )
+
+        #     print("u_x_tem_time: ", self.u_x_tem_time)
+
+        #     # save_tif_file(
+        #     #     self.h_total,
+        #     #     "h_total",
+        #     #     time,
+        #     #     self.results_path,
+        #     # )
+
+        #     write_tif_file(
+        #         self.h_total,
+        #         "h_total",
+        #         iteration,
+        #         self.results_path,
+        #     )
+
+        #     # for layer_id in range(0, self.num_layers):
+
+        #     #     save_tif_file(
+        #     #         self.layer_list[layer_id].u_x,
+        #     #         f"u_x_l_{layer_id}_itr_{iteration}_t",
+        #     #         time,
+        #     #         self.results_path,
+        #     #     )
+
+        #     #     save_tif_file(
+        #     #         self.layer_list[layer_id].T,
+        #     #         f"temp_l_{layer_id}_itr_{iteration}_t",
+        #     #         time,
+        #     #         self.results_path,
+        #     #     )
+
+        #     for layer_id in range(0, self.num_layers):
+
+        #         write_tif_file(
+        #             self.layer_list[layer_id].u_x,
+        #             f"u_x_l_{layer_id}_itr",
+        #             iteration,
+        #             self.results_path,
+        #         )
+
+        #         write_tif_file(
+        #             self.layer_list[layer_id].T,
+        #             f"temp_l_{layer_id}_itr",
+        #             iteration,
+        #             self.results_path,
+        #         )
+
+        #     print(
+        #         "-----------------write---------------",
+        #         "time: ",
+        #         time,
+        #         "iteration",
+        #         iteration,
+        #     )
+        #     # input("enter to continue ...")
+
+        # if iteration == self.number_of_iterations:
+
+        #     save_u_x_tem_time(
+        #         self.u_x_tem_time, f"{self.results_path}/u_x_tem_time.csv"
+        #     )
 
         return self.layer_list[1].u_x.future()
 

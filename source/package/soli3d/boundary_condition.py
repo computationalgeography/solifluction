@@ -5,8 +5,10 @@
 from typing import Any
 
 import lue.framework as lfr
-import numpy as np
-from numpy.typing import NDArray
+
+# import numpy as np
+# from numpy.typing import NDArray
+from .kernels import kernel_i_jm1, kernel_i_jp1, kernel_im1_j, kernel_ip1_j
 
 
 def boundary_set(
@@ -42,51 +44,54 @@ def boundary_set(
     # The boundary types are pre-specified.
     # boundary types are defined in "io_data_process.py/default_boundary_type function"
 
-    phi = lfr.where(
-        ((boundary_loc == 1) & (boundary_type == 0)),
-        Dirichlet_boundary_value,
-        phi,
-    )
+    # ---------------------------------------------------------------------------------------------
+    # phi = lfr.where(
+    #     ((boundary_loc == 1) & (boundary_type == 0)),
+    #     Dirichlet_boundary_value,
+    #     phi,
+    # )
 
-    # kernel_im1_j   i-1, j
-    kernel_im1_j: NDArray[np.uint8] = np.array(
-        [
-            [0, 0, 0],
-            [1, 0, 0],
-            [0, 0, 0],
-        ],
-        dtype=np.uint8,
-    )
+    # # kernel_im1_j   i-1, j
+    # kernel_im1_j: NDArray[np.uint8] = np.array(
+    #     [
+    #         [0, 0, 0],
+    #         [1, 0, 0],
+    #         [0, 0, 0],
+    #     ],
+    #     dtype=np.uint8,
+    # )
 
-    # kernel_i_jm1   i, j-1    # Check it. It is changed compared to advection-diffusion  test model.
-    kernel_i_jm1: NDArray[np.uint8] = np.array(
-        [
-            [0, 0, 0],
-            [0, 0, 0],
-            [0, 1, 0],
-        ],
-        dtype=np.uint8,
-    )
+    # # kernel_i_jm1   i, j-1    # Check it. It is changed compared to advection-diffusion  test model.
+    # kernel_i_jm1: NDArray[np.uint8] = np.array(
+    #     [
+    #         [0, 0, 0],
+    #         [0, 0, 0],
+    #         [0, 1, 0],
+    #     ],
+    #     dtype=np.uint8,
+    # )
 
-    # kernel_ip1_j   i+1, j
-    kernel_ip1_j: NDArray[np.uint8] = np.array(
-        [
-            [0, 0, 0],
-            [0, 0, 1],
-            [0, 0, 0],
-        ],
-        dtype=np.uint8,
-    )
+    # # kernel_ip1_j   i+1, j
+    # kernel_ip1_j: NDArray[np.uint8] = np.array(
+    #     [
+    #         [0, 0, 0],
+    #         [0, 0, 1],
+    #         [0, 0, 0],
+    #     ],
+    #     dtype=np.uint8,
+    # )
 
-    # kernel_i_jp1   i, j+1     # Check it. It is changed compared to advection-diffusion  test model.
-    kernel_i_jp1: NDArray[np.uint8] = np.array(
-        [
-            [0, 1, 0],
-            [0, 0, 0],
-            [0, 0, 0],
-        ],
-        dtype=np.uint8,
-    )
+    # # kernel_i_jp1   i, j+1     # Check it. It is changed compared to advection-diffusion  test model.
+    # kernel_i_jp1: NDArray[np.uint8] = np.array(
+    #     [
+    #         [0, 1, 0],
+    #         [0, 0, 0],
+    #         [0, 0, 0],
+    #     ],
+    #     dtype=np.uint8,
+    # )
+
+    # -----------------------------------------------------------------------------
 
     # Neumann boundary imposing
 

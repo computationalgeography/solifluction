@@ -58,7 +58,7 @@ git clone https://github.com/computationalgeography/solifluction.git
 ### Navigate to the repository
 
 ```bash
-cd solifluction
+cd soli3d
 ```
 
 ### Create the environment

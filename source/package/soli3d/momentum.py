@@ -1,11 +1,14 @@
 from typing import Any
 
 import lue.framework as lfr
-import numpy as np
-from numpy.typing import NDArray
 
+# import numpy as np
 # import .derivatives_discretization as fdm
 from .boundary_condition import boundary_set
+from .kernels import kernel_i_jm1, kernel_i_jp1, kernel_im1_j, kernel_ip1_j
+
+# if TYPE_CHECKING:
+# from numpy.typing import NDArray
 
 # Eq: d_phi/d_t + (u_x * d_phi/d_x) + (u_z * d_phi/d_z) + (nu_x * d2_phi/d_x2)
 #     + (nu_z * d2_phi/d_z2) = rhs
@@ -245,69 +248,71 @@ def momentum_ux(
     #     dtype=np.uint8,
     # )
 
-    # kernel_im1_j   i-1, j
-    kernel_im1_j: NDArray[np.uint8] = np.array(
-        [
-            [0, 0, 0],
-            [1, 0, 0],
-            [0, 0, 0],
-        ],
-        dtype=np.uint8,
-    )
+    # -----------------------------------------------------------------------------
+    # # kernel_im1_j   i-1, j
+    # kernel_im1_j: NDArray[np.uint8] = np.array(
+    #     [
+    #         [0, 0, 0],
+    #         [1, 0, 0],
+    #         [0, 0, 0],
+    #     ],
+    #     dtype=np.uint8,
+    # )
 
-    """
-    # kernel_i_jm1   i, j-1
-    kernel_i_jm1 = np.array(
-        [
-            [0, 0, 0],
-            [0, 0, 0],
-            [0, 1, 0],
-        ],
-        dtype=np.uint8,
-    )
-    """
+    # """
+    # # kernel_i_jm1   i, j-1
+    # kernel_i_jm1 = np.array(
+    #     [
+    #         [0, 0, 0],
+    #         [0, 0, 0],
+    #         [0, 1, 0],
+    #     ],
+    #     dtype=np.uint8,
+    # )
+    # """
 
-    # kernel_i_jm1   i, j-1
-    kernel_i_jm1: NDArray[np.uint8] = np.array(
-        [
-            [0, 1, 0],
-            [0, 0, 0],
-            [0, 0, 0],
-        ],
-        dtype=np.uint8,
-    )
+    # # kernel_i_jm1   i, j-1
+    # kernel_i_jm1: NDArray[np.uint8] = np.array(
+    #     [
+    #         [0, 1, 0],
+    #         [0, 0, 0],
+    #         [0, 0, 0],
+    #     ],
+    #     dtype=np.uint8,
+    # )
 
-    # kernel_ip1_j   i+1, j
-    kernel_ip1_j: NDArray[np.uint8] = np.array(
-        [
-            [0, 0, 0],
-            [0, 0, 1],
-            [0, 0, 0],
-        ],
-        dtype=np.uint8,
-    )
+    # # kernel_ip1_j   i+1, j
+    # kernel_ip1_j: NDArray[np.uint8] = np.array(
+    #     [
+    #         [0, 0, 0],
+    #         [0, 0, 1],
+    #         [0, 0, 0],
+    #     ],
+    #     dtype=np.uint8,
+    # )
 
-    """
-    # kernel_i_jp1   i, j+1
-    kernel_i_jp1 = np.array(
-        [
-            [0, 1, 0],
-            [0, 0, 0],
-            [0, 0, 0],
-        ],
-        dtype=np.uint8,
-    )
-    """
+    # """
+    # # kernel_i_jp1   i, j+1
+    # kernel_i_jp1 = np.array(
+    #     [
+    #         [0, 1, 0],
+    #         [0, 0, 0],
+    #         [0, 0, 0],
+    #     ],
+    #     dtype=np.uint8,
+    # )
+    # """
 
-    # kernel_i_jp1   i, j+1
-    kernel_i_jp1: NDArray[np.uint8] = np.array(
-        [
-            [0, 0, 0],
-            [0, 0, 0],
-            [0, 1, 0],
-        ],
-        dtype=np.uint8,
-    )
+    # # kernel_i_jp1   i, j+1
+    # kernel_i_jp1: NDArray[np.uint8] = np.array(
+    #     [
+    #         [0, 0, 0],
+    #         [0, 0, 0],
+    #         [0, 1, 0],
+    #     ],
+    #     dtype=np.uint8,
+    # )
+    # ---------------------------------------------------------------------------
 
     # coeff_map_i_j = (
     #     1
@@ -429,69 +434,69 @@ def momentum_ux_steady_state(
 
     dt: float = 1
 
-    # kernel_im1_j   i-1, j
-    kernel_im1_j: NDArray[np.uint8] = np.array(
-        [
-            [0, 0, 0],
-            [1, 0, 0],
-            [0, 0, 0],
-        ],
-        dtype=np.uint8,
-    )
+    # # kernel_im1_j   i-1, j
+    # kernel_im1_j: NDArray[np.uint8] = np.array(
+    #     [
+    #         [0, 0, 0],
+    #         [1, 0, 0],
+    #         [0, 0, 0],
+    #     ],
+    #     dtype=np.uint8,
+    # )
 
-    """
-    # kernel_i_jm1   i, j-1
-    kernel_i_jm1 = np.array(
-        [
-            [0, 0, 0],
-            [0, 0, 0],
-            [0, 1, 0],
-        ],
-        dtype=np.uint8,
-    )
-    """
+    # """
+    # # kernel_i_jm1   i, j-1
+    # kernel_i_jm1 = np.array(
+    #     [
+    #         [0, 0, 0],
+    #         [0, 0, 0],
+    #         [0, 1, 0],
+    #     ],
+    #     dtype=np.uint8,
+    # )
+    # """
 
-    # kernel_i_jm1   i, j-1
-    kernel_i_jm1: NDArray[np.uint8] = np.array(
-        [
-            [0, 1, 0],
-            [0, 0, 0],
-            [0, 0, 0],
-        ],
-        dtype=np.uint8,
-    )
+    # # kernel_i_jm1   i, j-1
+    # kernel_i_jm1: NDArray[np.uint8] = np.array(
+    #     [
+    #         [0, 1, 0],
+    #         [0, 0, 0],
+    #         [0, 0, 0],
+    #     ],
+    #     dtype=np.uint8,
+    # )
 
-    # kernel_ip1_j   i+1, j
-    kernel_ip1_j: NDArray[np.uint8] = np.array(
-        [
-            [0, 0, 0],
-            [0, 0, 1],
-            [0, 0, 0],
-        ],
-        dtype=np.uint8,
-    )
+    # # kernel_ip1_j   i+1, j
+    # kernel_ip1_j: NDArray[np.uint8] = np.array(
+    #     [
+    #         [0, 0, 0],
+    #         [0, 0, 1],
+    #         [0, 0, 0],
+    #     ],
+    #     dtype=np.uint8,
+    # )
 
-    """
-    # kernel_i_jp1   i, j+1
-    kernel_i_jp1 = np.array(
-        [
-            [0, 1, 0],
-            [0, 0, 0],
-            [0, 0, 0],
-        ],
-        dtype=np.uint8,
-    )
-    """
+    # """
+    # # kernel_i_jp1   i, j+1
+    # kernel_i_jp1 = np.array(
+    #     [
+    #         [0, 1, 0],
+    #         [0, 0, 0],
+    #         [0, 0, 0],
+    #     ],
+    #     dtype=np.uint8,
+    # )
+    # """
 
-    # kernel_i_jp1   i, j+1
-    kernel_i_jp1: NDArray[np.uint8] = np.array(
-        [
-            [0, 0, 0],
-            [0, 0, 0],
-            [0, 1, 0],
-        ],
-        dtype=np.uint8,
-    )
+    # # kernel_i_jp1   i, j+1
+    # kernel_i_jp1: NDArray[np.uint8] = np.array(
+    #     [
+    #         [0, 0, 0],
+    #         [0, 0, 0],
+    #         [0, 1, 0],
+    #     ],
+    #     dtype=np.uint8,
+    # )
 
     # coeff_map_i_j = (
     #     1

@@ -1,9 +1,10 @@
 from typing import Any
 
 import lue.framework as lfr
-import numpy as np
 
+# import numpy as np
 from .boundary_condition import boundary_set
+from .kernels import kernel_i_jm1, kernel_i_jp1, kernel_im1_j, kernel_ip1_j
 
 
 def mass_conservation_2D_vof(
@@ -24,47 +25,49 @@ def mass_conservation_2D_vof(
 
     """
 
-    # kernel_im1_j   i-1, j
-    kernel_im1_j = np.array(
-        [
-            [0, 0, 0],
-            [1, 0, 0],
-            [0, 0, 0],
-        ],
-        dtype=np.uint8,
-    )
-    # kernel_i_jm1   i, j-1    # check this ???
-    kernel_i_jm1 = np.array(
-        [
-            [0, 1, 0],
-            [0, 0, 0],
-            [0, 0, 0],
-        ],
-        dtype=np.uint8,
-    )
+    # ---------------------------------------------------------------
+    # # kernel_im1_j   i-1, j
+    # kernel_im1_j = np.array(
+    #     [
+    #         [0, 0, 0],
+    #         [1, 0, 0],
+    #         [0, 0, 0],
+    #     ],
+    #     dtype=np.uint8,
+    # )
+    # # kernel_i_jm1   i, j-1    # check this ???
+    # kernel_i_jm1 = np.array(
+    #     [
+    #         [0, 1, 0],
+    #         [0, 0, 0],
+    #         [0, 0, 0],
+    #     ],
+    #     dtype=np.uint8,
+    # )
 
-    # kernel_ip1_j   i+1, j
-    kernel_ip1_j = np.array(
-        [
-            [0, 0, 0],
-            [0, 0, 1],
-            [0, 0, 0],
-        ],
-        dtype=np.uint8,
-    )
+    # # kernel_ip1_j   i+1, j
+    # kernel_ip1_j = np.array(
+    #     [
+    #         [0, 0, 0],
+    #         [0, 0, 1],
+    #         [0, 0, 0],
+    #     ],
+    #     dtype=np.uint8,
+    # )
 
-    # kernel_i_jp1   i, j+1      # check this ???
-    kernel_i_jp1 = np.array(
-        [
-            [0, 0, 0],
-            [0, 0, 0],
-            [0, 1, 0],
-        ],
-        dtype=np.uint8,
-    )
+    # # kernel_i_jp1   i, j+1      # check this ???
+    # kernel_i_jp1 = np.array(
+    #     [
+    #         [0, 0, 0],
+    #         [0, 0, 0],
+    #         [0, 1, 0],
+    #     ],
+    #     dtype=np.uint8,
+    # )
 
     # Upwind first order method
     # It is assumed that var>=0
+    # ----------------------------------------------------------
 
     flux_x_upstream = lfr.where(
         u_x_mesh >= 0,
