@@ -1,8 +1,8 @@
-# Solifluction
+# soli3d
 
 **Numerical simulation of solifluction processes**
 
-Solifluction is a numerical simulation package based on the finite difference method (FDM) and the [LUE](https://lue.computationalgeography.org) library.
+soli3d is a numerical simulation package based on the finite difference method (FDM) and the [LUE](https://lue.computationalgeography.org) library.
 It models solifluction as a multiphase process involving muddy soil movement and ice sheet expansion or dissipation.
 The model solves the mass conservation, momentum conservation, and heat transfer equations to simulate the coupled dynamics of soil and ice.
 
@@ -52,7 +52,7 @@ A ready-to-use environment file is provided in `environment/configuration/conda_
 Clone the repository from GitHub:
 
 ```bash
-git clone https://github.com/computationalgeography/solifluction.git
+git clone https://github.com/computationalgeography/soli3d.git
 ```
 
 ### Navigate to the repository
@@ -90,25 +90,25 @@ export LD_PRELOAD="/usr/lib/x86_64-linux-gnu/libtcmalloc_minimal.so.4"
 Set the path to the package directory:
 
 ```bash
-export PYTHONPATH=/full/path/to/solifluction/source/package:$PYTHONPATH
+export PYTHONPATH=/full/path/to/soli3d/source/package:$PYTHONPATH
 ```
 
 Run the simulation with a parameter file and specify the number of threads:
 
 ```bash
-python path/to/solifluction/source/script/run_simulation.py --hpx:threads=<nr_threads> <path/to/param.txt>
+python path/to/soli3d/source/script/run_simulation.py --hpx:threads=<nr_threads> <path/to/param.txt>
 ```
 
 ## Test
 
 ```bash
-PYTHONPATH=path/to/solifluction/source/package python -m unittest source.test.model_test -v
+PYTHONPATH=path/to/soli3d/source/package python -m unittest source.test.model_test -v
 ```
 
 ## Generate documentation
 
 ```bash
-sphinx-build path/to/solifluction/doc $HOME/tmp/documentation
+sphinx-build path/to/soli3d/doc $HOME/tmp/documentation
 ```
 
 Point your browser at $HOME/tmp/documentation/index.html.
