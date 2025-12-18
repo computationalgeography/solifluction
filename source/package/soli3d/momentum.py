@@ -1,6 +1,7 @@
 from typing import Any
 
 import lue.framework as lfr
+from pympler import asizeof
 
 # import numpy as np
 # import .derivatives_discretization as fdm

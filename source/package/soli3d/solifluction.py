@@ -10,6 +10,7 @@ from typing import Any
 # import docopt
 import lue.framework as lfr
 import numpy as np
+from pympler import asizeof
 
 from .derivatives_discretization import dx_upwind, second_derivatives_in_y
 from .heat_transfer import compute_temperature_1D_in_y
@@ -85,6 +86,12 @@ def print_for_debug(
             "layer_id",
             layer_id,
         )
+
+        print(
+            f"layer_u_x_numpy layer num-{num_layers} size: {asizeof.asizeof(layer_u_x_numpy)/1024**2} MB"
+        )
+
+    print("layer_list size:", asizeof.asizeof(layer_list) / 1024**2, "MB")
 
     layer_u_x_numpy_surf = (
         lfr.to_numpy(layer_list[num_layers - 1].u_x) * 3600 * 24 * 365 * 100
@@ -1089,11 +1096,13 @@ class Solifluction(lfr.Model):
 
         # ----- interpolate surface temperature from file
 
-        time: float = iteration * self.dt_global_model
+        # time: float = iteration * self.dt_global_model
 
-        surface_temperature: float = interpolate_temperature(
-            time, self.days_temperature_file, self.temps_temperature_file
-        )
+        # surface_temperature: float = interpolate_temperature(
+        #     time, self.days_temperature_file, self.temps_temperature_file
+        # )
+
+        surface_temperature: float = 5.0
 
         # ----- End: interpolate surface temperature from file
 
@@ -1125,20 +1134,20 @@ class Solifluction(lfr.Model):
             self.heat_transfer_func,
         )
 
-        if iteration % self.write_intervals_time == 0:
+        # if iteration % self.write_intervals_time == 0:
 
-            print_for_debug(
-                self.layer_list,
-                self.num_layers,
-                time,
-                surface_temperature,
-                self.u_x_tem_time,
-                self.h_total,
-                iteration,
-                self.results_path,
-                save_u_x_tem_time,
-                self.number_of_iterations,
-            )
+        #     print_for_debug(
+        #         self.layer_list,
+        #         self.num_layers,
+        #         time,
+        #         surface_temperature,
+        #         self.u_x_tem_time,
+        #         self.h_total,
+        #         iteration,
+        #         self.results_path,
+        #         save_u_x_tem_time,
+        #         self.number_of_iterations,
+        #     )
 
         #     for layer_id in range(0, self.num_layers):
 
@@ -1326,7 +1335,10 @@ def solifluction(
     model.permafrost = permafrost
 
     lfr.run_deterministic(
-        model, lfr.DefaultProgressor(), nr_time_steps=number_of_iterations, rate_limit=3
+        model,
+        lfr.DefaultProgressor(),
+        nr_time_steps=number_of_iterations,
+        rate_limit=25,
     )
 
 
