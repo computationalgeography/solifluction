@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "soli3d"
+version = "0.0.1"
+authors = [{ name = "Saeb Faraji Gargari", email = "s.farajigargari@uu.nl" }]
+description = "Package containing the solifluction model"
+license = { file = "LICENSE" }
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+# dependencies = ["lue", "gdal", "numpy", "scipy"]
+
+[project.urls]
+"Homepage" = "https://github.com/computationalgeography/solifluction/solifluction"
+"Bug Tracker" = "https://github.com/computationalgeography/solifluction/solifluction/issues"
+
+# [project.scripts]
+# soli3d_model = "soli3d.solifluction"
+
+# [tool.hatch.build.targets.wheel]
+# packages = ["soli3d"]
+
+[tool.hatch.build]
+include = ["source/package/soli3d/**"]
