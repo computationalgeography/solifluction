@@ -503,82 +503,83 @@ def simulate_solifluction(
     local_momentum_iteration: int = 0
     local_heat_transfer_iteration: int = 0
 
-    g_sin = np.sin(slope_radian) * 9.81
+    # g_sin = np.sin(slope_radian) * 9.81
+    g_sin = lfr.sin(slope_radian) * 9.81
 
     # print("time inside simulate_solifluction: ", time)
 
     # time_iteration = time_iteration + 1
     # print("time iteration: ", time_iteration)
 
-    # --------------- compute temperatures in internal layers --------------------------
+    # # --------------- compute temperatures in internal layers --------------------------
 
-    surface_temperature_lue = lfr.create_array(
-        array_shape,
-        dtype=np.float64,
-        fill_value=surface_temperature,
-        partition_shape=partition_shape,
-    )
+    # surface_temperature_lue = lfr.create_array(
+    #     array_shape,
+    #     dtype=np.float64,
+    #     fill_value=surface_temperature,
+    #     partition_shape=partition_shape,
+    # )
 
-    while (
-        local_heat_transfer_iteration < heat_transfer_iteration_threshold
-    ):  # if abs(time - local_heat_transfer_time) >= dt_heat_transfer:
+    # while (
+    #     local_heat_transfer_iteration < heat_transfer_iteration_threshold
+    # ):  # if abs(time - local_heat_transfer_time) >= dt_heat_transfer:
 
-        # print("compute_temperature_1D_in_y in run")
+    #     # print("compute_temperature_1D_in_y in run")
 
-        # surface_temperature = interpolate_temperature(
-        #     time, days_temperature_file, temps_temperature_file
-        # )
+    #     # surface_temperature = interpolate_temperature(
+    #     #     time, days_temperature_file, temps_temperature_file
+    #     # )
 
-        heat_transfer_func(
-            layer_list,
-            num_layers,
-            temperature_bed,
-            surface_temperature,
-            surface_temperature_lue,
-            dt_heat_transfer,
-        )
+    #     heat_transfer_func(
+    #         layer_list,
+    #         num_layers,
+    #         temperature_bed,
+    #         surface_temperature,
+    #         surface_temperature_lue,
+    #         dt_heat_transfer,
+    #     )
 
-        # ##### layer_list[0].T = temperature_bed
-        # ##### layer_list[num_layers - 1].T = surface_temperature_lue
+    #     # ##### layer_list[0].T = temperature_bed
+    #     # ##### layer_list[num_layers - 1].T = surface_temperature_lue
 
-        # #####for layer_id in range(1, num_layers - 1):
+    #     # #####for layer_id in range(1, num_layers - 1):
 
-        # #####    layer_list[layer_id].T = compute_temperature_1D_in_y(
-        # #####        layer_list[layer_id].k_conductivity_heat,
-        # #####        layer_list[layer_id + 1].k_conductivity_heat,
-        # #####        layer_list[layer_id - 1].k_conductivity_heat,
-        # #####        layer_list[layer_id].rho_c_heat,
-        # #####        layer_list[layer_id].T,
-        # #####        layer_list[layer_id + 1].T,
-        # #####        layer_list[layer_id - 1].T,
-        # #####        dt_heat_transfer,
-        # #####        layer_list[layer_id].h_mesh,
-        # #####        layer_list[layer_id - 1].h_mesh,
-        # #####        surface_temperature,
-        # #####    )
+    #     # #####    layer_list[layer_id].T = compute_temperature_1D_in_y(
+    #     # #####        layer_list[layer_id].k_conductivity_heat,
+    #     # #####        layer_list[layer_id + 1].k_conductivity_heat,
+    #     # #####        layer_list[layer_id - 1].k_conductivity_heat,
+    #     # #####        layer_list[layer_id].rho_c_heat,
+    #     # #####        layer_list[layer_id].T,
+    #     # #####        layer_list[layer_id + 1].T,
+    #     # #####        layer_list[layer_id - 1].T,
+    #     # #####        dt_heat_transfer,
+    #     # #####        layer_list[layer_id].h_mesh,
+    #     # #####        layer_list[layer_id - 1].h_mesh,
+    #     # #####        surface_temperature,
+    #     # #####    )
 
-        # print(
-        #     "type of layer_list[layer_id].T before to numpy :",
-        #     type(layer_list[layer_id].T),
-        # )
+    #     # print(
+    #     #     "type of layer_list[layer_id].T before to numpy :",
+    #     #     type(layer_list[layer_id].T),
+    #     # )
 
-        # for layer_id in range(0, num_layers):
+    #     # for layer_id in range(0, num_layers):
 
-        #     layer_T_numpy = lfr.to_numpy(layer_list[layer_id].T)
-        #     print(
-        #         "layer_T_numpy[50,50]",
-        #         layer_T_numpy[50, 50],
-        #         "layer_id",
-        #         layer_id,
-        #     )
+    #     #     layer_T_numpy = lfr.to_numpy(layer_list[layer_id].T)
+    #     #     print(
+    #     #         "layer_T_numpy[50,50]",
+    #     #         layer_T_numpy[50, 50],
+    #     #         "layer_id",
+    #     #         layer_id,
+    #     #     )
 
-        # local_heat_transfer_time = local_heat_transfer_time + dt_heat_transfer
+    #     # local_heat_transfer_time = local_heat_transfer_time + dt_heat_transfer
 
-        local_heat_transfer_iteration = local_heat_transfer_iteration + 1
+    #     local_heat_transfer_iteration = local_heat_transfer_iteration + 1
 
-        # print("local_heat_transfer_iteration :", local_heat_transfer_iteration)
+    #     # print("local_heat_transfer_iteration :", local_heat_transfer_iteration)
 
-    # --------------- End: compute temperatures in internal layers -----------------
+    # # --------------- End: compute temperatures in internal layers -----------------
 
     # --------------- compute momentum u_x in internal layers ----------------------
 
@@ -589,7 +590,7 @@ def simulate_solifluction(
 
         # print("momentum_ux in run")
 
-        for layer_id in range(1, num_layers):
+        for layer_id in range(1, num_layers):  # +++++*****
 
             # a, b: 2e13, 0.4605 (T_data = ([0, 5]), mu_data([2e13, 2e12]))
             # a, b: 2e13, 0.9210 (T_data = ([0, 5]), mu_data([2e13, 2e11]))
@@ -600,30 +601,38 @@ def simulate_solifluction(
             #     layer_list[layer_id].T, 2e13, 0.9210
             # )
 
-            layer_list[layer_id].mu_soil = viscosity_exp_temp(
-                layer_list[layer_id].T, 2e12, 0.9210
-            )
+            # layer_list[layer_id].mu_soil = viscosity_exp_temp(
+            #     layer_list[layer_id].T, 2e12, 0.9210
+            # )
 
             # layer_list[layer_id].mu_soil = viscosity_exp_temp(
             #     layer_list[layer_id].T, 2e14, 1.8421
             # )
 
             # gama_prim_surface: float = (2610 - 1000) * 9.81
-            gama_prim_surface: float = (
-                (surface_density / np.cos(slope_radian)) - 1000
+            # gama_prim_surface: float = (
+            #     (surface_density / np.cos(slope_radian)) - 1000
+            # ) * 9.81
+
+            gama_prim_surface: float = (  # +++++**********
+                (surface_density / lfr.cos(slope_radian)) - 1000
             ) * 9.81
 
-            rhs = (
-                g_sin
-                + (
-                    (layer_list[layer_id].mu_soil / layer_list[layer_id].density_soil)
-                    * d2u_x_dy2[layer_id]
-                )
-                - (
-                    (gama_prim_surface / layer_list[layer_id].density_soil)
-                    * dx_upwind(h_total, dx, layer_list[layer_id].u_x)
-                )
-            )
+            # rhs = (  # +++++***********
+            #     g_sin
+            #     + (
+            #         (layer_list[layer_id].mu_soil / layer_list[layer_id].density_soil)
+            #         * d2u_x_dy2[layer_id]
+            #     )
+            #     - (
+            #         (gama_prim_surface / layer_list[layer_id].density_soil)
+            #         * dx_upwind(h_total, dx, layer_list[layer_id].u_x)
+            #     )
+            # )
+
+            ## _ = rhs.future()  # break graph
+
+            rhs = 5
 
             # print("g_sin: ", g_sin)
 
@@ -649,7 +658,9 @@ def simulate_solifluction(
 
             # print("type of layer_list[layer_id].T:", type(layer_list[layer_id].T))
 
-            phase_state = phase_detect_from_temperature(layer_list[layer_id].T)
+            # phase_state = phase_detect_from_temperature(
+            #     layer_list[layer_id].T
+            # )  # ++++++******
 
             # phase_state_numpy = lfr.to_numpy(phase_state)
             # print(
@@ -676,91 +687,96 @@ def simulate_solifluction(
 
             # print("Before:", id(layer_list[layer_id].u_x))
 
-            layer_list[layer_id].u_x = momentum_ux(
-                layer_list[layer_id].u_x,
-                phase_state,  # phase_state_initial,
-                dx,
-                dz,
-                dt_momentum,
-                layer_list[layer_id].u_x,
-                layer_list[layer_id].u_z,
-                nu_x,
-                nu_z,
-                rhs,
-                layer_list[layer_id].h_mesh,
-                boundary_loc,
-                boundary_type,
-                dirichlet_boundary_value,
-                neumann_boundary_value,
-            )
-
-            # layer_list[layer_id].u_x = momentum_ux_steady_state(
-            #     layer_list[layer_id].u_x,
-            #     phase_state,
-            #     dx,
-            #     dz,
-            #     layer_list[layer_id].u_x,
-            #     layer_list[layer_id].u_z,
-            #     nu_x,
-            #     nu_z,
-            #     rhs,
-            #     layer_list[layer_id].h_mesh,
-            #     boundary_loc,
-            #     boundary_type,
-            #     dirichlet_boundary_value,
-            #     neumann_boundary_value,
-            # )
-
-            # print("After:", id(layer_list[layer_id].u_x))
-
-            # rhs_numpy = lfr.to_numpy(rhs)
-            # print(
-            #     "rhs_numpy[10,10]",
-            #     rhs_numpy[10, 10],
-            #     "layer_id",
-            #     layer_id,
-            # )
-
-            # if layer_id == 0:  # bed layer
-
-            #     # print("type of layer_list[1].u_x:", type(layer_list[1].u_x))
-            #     # print("type of layer_list[1].h_mesh:", type(layer_list[1].h_mesh))
-
-            #     d2u_x_dy2[0] = second_derivatives_in_y(
-            #         layer_list[1].u_x,
-            #         layer_list[2].u_x,
-            #         layer_list[0].u_x,
-            #         layer_list[1].h_mesh,
-            #         layer_list[0].h_mesh,
-            #     )
-
-            # if layer_id == num_layers - 1:  # surface layer
-            #     d2u_x_dy2[-1] = second_derivatives_in_y(
-            #         layer_list[num_layers - 2].u_x,
-            #         layer_list[num_layers - 1].u_x,
-            #         layer_list[num_layers - 3].u_x,
-            #         layer_list[num_layers - 1].h_mesh,
-            #         layer_list[num_layers - 2].h_mesh,
-            #     )
-
-            # else:  # internal layers
-            #     d2u_x_dy2[layer_id] = second_derivatives_in_y(
+            # layer_list[layer_id].u_x = (
+            #     momentum_ux(  # ++++++++++++++++++++++****************
             #         layer_list[layer_id].u_x,
-            #         layer_list[layer_id + 1].u_x,
-            #         layer_list[layer_id - 1].u_x,
+            #         phase_state,  # phase_state_initial,
+            #         dx,
+            #         dz,
+            #         dt_momentum,
+            #         layer_list[layer_id].u_x,
+            #         layer_list[layer_id].u_z,
+            #         nu_x,
+            #         nu_z,
+            #         rhs,
             #         layer_list[layer_id].h_mesh,
-            #         layer_list[layer_id - 1].h_mesh,
+            #         boundary_loc,
+            #         boundary_type,
+            #         dirichlet_boundary_value,
+            #         neumann_boundary_value,
             #     )
-
-            # d2u_x_dy2_numpy = lfr.to_numpy(d2u_x_dy2[layer_id])
-            # print(
-            #     "d2u_x_dy2_numpy[50,50]",
-            #     d2u_x_dy2_numpy[50, 50],
-            #     "layer_id",
-            #     layer_id,
             # )
 
-            # input("Enter to continue ...")
+        # layer_list[layer_id].u_x = momentum_ux_steady_state(
+        #     layer_list[layer_id].u_x,
+        #     phase_state,
+        #     dx,
+        #     dz,
+        #     layer_list[layer_id].u_x,
+        #     layer_list[layer_id].u_z,
+        #     nu_x,
+        #     nu_z,
+        #     rhs,
+        #     layer_list[layer_id].h_mesh,
+        #     boundary_loc,
+        #     boundary_type,
+        #     dirichlet_boundary_value,
+        #     neumann_boundary_value,
+        # )
+
+        # print("After:", id(layer_list[layer_id].u_x))
+
+        # rhs_numpy = lfr.to_numpy(rhs)
+        # print(
+        #     "rhs_numpy[10,10]",
+        #     rhs_numpy[10, 10],
+        #     "layer_id",
+        #     layer_id,
+        # )
+
+        # if layer_id == 0:  # bed layer
+
+        #     # print("type of layer_list[1].u_x:", type(layer_list[1].u_x))
+        #     # print("type of layer_list[1].h_mesh:", type(layer_list[1].h_mesh))
+
+        #     d2u_x_dy2[0] = second_derivatives_in_y(
+        #         layer_list[1].u_x,
+        #         layer_list[2].u_x,
+        #         layer_list[0].u_x,
+        #         layer_list[1].h_mesh,
+        #         layer_list[0].h_mesh,
+        #     )
+
+        # if layer_id == num_layers - 1:  # surface layer
+        #     d2u_x_dy2[-1] = second_derivatives_in_y(
+        #         layer_list[num_layers - 2].u_x,
+        #         layer_list[num_layers - 1].u_x,
+        #         layer_list[num_layers - 3].u_x,
+        #         layer_list[num_layers - 1].h_mesh,
+        #         layer_list[num_layers - 2].h_mesh,
+        #     )
+
+        # else:  # internal layers
+        #     d2u_x_dy2[layer_id] = second_derivatives_in_y(
+        #         layer_list[layer_id].u_x,
+        #         layer_list[layer_id + 1].u_x,
+        #         layer_list[layer_id - 1].u_x,
+        #         layer_list[layer_id].h_mesh,
+        #         layer_list[layer_id - 1].h_mesh,
+        #     )
+
+        # d2u_x_dy2_numpy = lfr.to_numpy(d2u_x_dy2[layer_id])
+        # print(
+        #     "d2u_x_dy2_numpy[50,50]",
+        #     d2u_x_dy2_numpy[50, 50],
+        #     "layer_id",
+        #     layer_id,
+        # )
+
+        # input("Enter to continue ...")
+
+        # # 🔴 force breach computation graph
+        # _ = layer_list[1].u_x.future()
 
         for layer_id in range(0, num_layers):
             if layer_id == 0:  # bed layer
@@ -794,13 +810,19 @@ def simulate_solifluction(
                     layer_list[layer_id - 1].h_mesh,
                 )
 
-            # d2u_x_dy2_numpy = lfr.to_numpy(d2u_x_dy2[layer_id])
-            # print(
-            #     "d2u_x_dy2_numpy[50,50]",
-            #     d2u_x_dy2_numpy[50, 50],
-            #     "layer_id",
-            #     layer_id,
-            # )
+                # 🔴 break computational graph immediately
+                # _ = d2u_x_dy2[layer_id].future()
+
+        # 🔴 break computational graph
+        _ = d2u_x_dy2[1].future()
+
+        # d2u_x_dy2_numpy = lfr.to_numpy(d2u_x_dy2[layer_id])
+        # print(
+        #     "d2u_x_dy2_numpy[50,50]",
+        #     d2u_x_dy2_numpy[50, 50],
+        #     "layer_id",
+        #     layer_id,
+        # )
 
         # for layer_id in range(0, num_layers):
 
@@ -832,15 +854,15 @@ def simulate_solifluction(
         # local_momentum_time = local_momentum_time + dt_momentum
         local_momentum_iteration = local_momentum_iteration + 1
 
-        model_total_iteration = model_total_iteration + 1
+    model_total_iteration = model_total_iteration + 1
 
-        # print("local_momentum_iteration: ", local_momentum_iteration)
+    # print("local_momentum_iteration: ", local_momentum_iteration)
 
-        # if local_momentum_iteration > momentum_iteration_threshold:
+    # if local_momentum_iteration > momentum_iteration_threshold:
 
-        #     time = (
-        #         time - (momentum_iteration_threshold * dt_momentum)
-        #     ) + dt_mass_conservation
+    #     time = (
+    #         time - (momentum_iteration_threshold * dt_momentum)
+    #     ) + dt_mass_conservation
 
     # print("time inside momentum u_x", time)
     # input("enter to continue ...")
@@ -849,6 +871,7 @@ def simulate_solifluction(
 
     # --------------- compute VOF -------------------------------
 
+    """
     if abs(time - local_mass_conservation_time) >= dt_mass_conservation:
 
         # print("mass_conservation_2D_vof in run")
@@ -871,7 +894,7 @@ def simulate_solifluction(
         )
 
     h_total = calculate_total_h(layer_list)
-
+    """
     # --------------- End: compute VOF -------------------------------
 
     # eps_write_intervals: float = 1e-6
@@ -1338,7 +1361,7 @@ def solifluction(
         model,
         lfr.DefaultProgressor(),
         nr_time_steps=number_of_iterations,
-        rate_limit=25,
+        rate_limit=10,
     )
 
 
