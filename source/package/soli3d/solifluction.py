@@ -618,21 +618,21 @@ def simulate_solifluction(
                 (surface_density / lfr.cos(slope_radian)) - 1000
             ) * 9.81
 
-            # rhs = (  # +++++***********
-            #     g_sin
-            #     + (
-            #         (layer_list[layer_id].mu_soil / layer_list[layer_id].density_soil)
-            #         * d2u_x_dy2[layer_id]
-            #     )
-            #     - (
-            #         (gama_prim_surface / layer_list[layer_id].density_soil)
-            #         * dx_upwind(h_total, dx, layer_list[layer_id].u_x)
-            #     )
-            # )
+            rhs = (  # +++++***********
+                g_sin
+                + (
+                    (layer_list[layer_id].mu_soil / layer_list[layer_id].density_soil)
+                    * d2u_x_dy2[layer_id]
+                )
+                - (
+                    (gama_prim_surface / layer_list[layer_id].density_soil)
+                    * dx_upwind(h_total, dx, layer_list[layer_id].u_x)
+                )
+            )
 
             ## _ = rhs.future()  # break graph
 
-            rhs = 5
+            # rhs = 5
 
             # print("g_sin: ", g_sin)
 
@@ -1361,7 +1361,7 @@ def solifluction(
         model,
         lfr.DefaultProgressor(),
         nr_time_steps=number_of_iterations,
-        rate_limit=10,
+        rate_limit=5,
     )
 
 
