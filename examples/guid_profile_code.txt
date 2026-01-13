@@ -1,0 +1,18 @@
+#!/bin/bash
+
+export MODULEPATH=/opt/easybuild/foss2023a/modules/all
+
+0) need to run python script in bash with
+
+python -m cProfile -o profile-original.dat ../source/script/run_simulation.py --hpx:threads=$nr_threads param_h_10_10_NOT_permafrost_vegetation.txt
+
+
+1) module load Python/3.11.3-GCCcore-12.3.0
+
+2)
+
+#python3 print_stat.py profile-original.dat | less
+
+or
+
+python3 profile_code_state.py profile-original.dat | less

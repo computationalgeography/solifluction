@@ -11,3 +11,4 @@ dependencies:
 - lue==0.3.9
 - rasterio
 - pandas
+- pympler

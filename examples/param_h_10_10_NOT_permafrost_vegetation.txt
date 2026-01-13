@@ -1,0 +1,154 @@
+[simulation]
+# 1 day in seconds — OK if you assume constant velocity
+#dt_momentum = 86400
+#dt_momentum = 0.1
+
+
+#(1 day)
+#dt_global_model = 86400
+
+#(2 hours)
+dt_global_model = 7200
+
+#dt_momentum = 1e-13
+#dt_momentum = 5e-13
+#dt_momentum = 2e-14
+#dt_momentum = 5e-15
+#dt_momentum = 1e-15
+dt_momentum = 5e-16
+
+
+
+# Can be large if temperature changes slowly
+#dt_heat_transfer = 86400
+#dt_heat_transfer = 10
+#dt_heat_transfer = 1000
+dt_heat_transfer = 20
+
+
+
+# Same as above
+dt_mass_conservation = 86400
+#dt_mass_conservation = 1
+
+
+
+#momentum_iteration_threshold = 5
+#momentum_iteration_threshold = 50
+#momentum_iteration_threshold = 10
+#momentum_iteration_threshold = 20
+#momentum_iteration_threshold = 20
+#momentum_iteration_threshold = 50
+#momentum_iteration_threshold = 100
+#momentum_iteration_threshold = 200
+#momentum_iteration_threshold = 2
+momentum_iteration_threshold = 200
+
+#number_of_iterations = 20
+#number_of_iterations = 730
+#number_of_iterations = 4200
+
+#(2 years)
+#umber_of_iterations = 20
+#number_of_iterations = 2000
+#number_of_iterations = 40
+number_of_iterations =1000
+
+
+
+#NOte (heat_iteration_threshold is set equal to momentum_iteration_threshold inside code solifluction.py It can be pass as an argument in this script)
+
+# ~10 days — OK
+#time_end_simulation = 864000
+#time_end_simulation = 0.5
+
+#(two years)
+#time_end_simulation = 63072000
+
+permafrost = True
+#permafrost = False
+
+
+
+
+
+#(10 days)
+#write_intervals_time = 5
+#write_intervals_time = 2
+write_intervals_time = 2
+
+
+#(50 days)
+#write_intervals_time = 4320000
+
+#(30 days)
+#write_intervals_time = 2592000
+
+# Correct boolean syntax
+# heat_transfer_warmup = False
+heat_transfer_warmup = True
+
+# Optional warmup iterations
+heat_transfer_warmup_iteration = 100
+
+# Relative path — make sure folder exists
+# results_path = ./results_mu_2e10
+results_path = ./20251008_permafrost_vegetation_h_10_10
+
+
+# Radians — small slope, realistic for solifluction
+#alfa_slope = 0.1
+alfa_slope = 0.2
+
+
+
+[grid]
+# number of cells per partition — OK
+#partition_shape_size = 10
+#partition_shape_size = 100
+partition_shape_size = 10
+
+# Mesh layer thickness in meters — reasonable
+#initial_layer_size = 0.1
+initial_layer_size = 0.05
+
+
+
+[material]
+# Realistic for wet soil
+#uniform_mu = 0.3
+#uniform_mu = 500
+#uniform_mu = 2.16e10
+#uniform_mu = 10e10
+#uniform_mu = 2e10
+#uniform_mu = 2.4e10
+uniform_mu = 2e12
+
+
+
+
+# Wet soil (lower than rock)
+#uniform_density = 1800
+uniform_density = 1200
+
+# W/m·K — plausible
+uniform_k_conductivity = 0.25
+
+# J/m³·K — reasonable
+uniform_rho_c_heat = 900000
+
+# Make sure this file exists
+#temperature_file = temperature_file.csv
+#temperature_file = temperature_file_2.csv
+#temperature_file = temperature_file_period_20_days.csv
+#temperature_file = temperature_file_two_years.csv
+temperature_file = temparature_real_processed_from_table_PP9.csv
+
+[initial_condition]
+# Initial height map — make sure path is correct
+# h_total_initial_file = h_uniform_initial.tif
+# h_total_initial_file = h_uniform_initial_float64.tif
+# h_total_initial_file = h_uniform_initial_dx_dz_0.1_h_2_float64.tif
+
+#h_total_initial_file = h_uniform_initial_dx_dz_0.1_h_0.5_float64.tif
+h_total_initial_file = h_initial_10m_10m_float64.tif
